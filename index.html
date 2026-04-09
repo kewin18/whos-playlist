@@ -490,6 +490,7 @@ const TRACK_LOOKUP_TIMEOUT_MS=5500;
 const PREVIEW_SEARCH_BUDGET_MS=12000;
 const ROUND_PAYLOAD_TIMEOUT_MS=14000;
 const PREVIEW_CHECK_TIMEOUT_MS=4200;
+const CLIP_REPICK_TIMEOUT_MS=1800;
 const MIN_PL_SONGS_PER_YEAR=40;
 const PREVIEW_CACHE={},TRACK_META_CACHE={};
 const YEAR_EXPANDED_CACHE={};
@@ -1372,6 +1373,7 @@ async function getTrackMeta(track,artist,songLang){
     return s.replace(/[^a-z0-9]+/g," ").trim();
   };
   const nt=norm(track),na=norm(artist);
+  const artistTokens=na.split(" ").filter(t=>t.length>2);
   let hit=null;
   for(const country of langCountries(songLang)){
     const terms=[`${track} ${artist}`,`${artist} ${track}`,`${track}`,`${artist}`];
@@ -1381,7 +1383,11 @@ async function getTrackMeta(track,artist,songLang){
         const list=data&&data.results?data.results:[];
         const exact=list.find(x=>norm(x.trackName)===nt&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
         const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
-        hit=exact||close||null;
+        const artistClose=list.find(x=>{
+          const tx=norm(x.trackName),ax=norm(x.artistName);
+          return (tx.includes(nt)||nt.includes(tx))&&artistTokens.some(t=>ax.includes(t));
+        });
+        hit=exact||close||artistClose||null;
         if(hit&&hit.previewUrl)break;
       }catch{
         // timeout/network error for a single attempt - try next term/country
@@ -1395,7 +1401,7 @@ async function getTrackMeta(track,artist,songLang){
 }
 async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);PREVIEW_CACHE[key]=meta.previewUrl;return PREVIEW_CACHE[key]}
 async function renderSongArtwork(modeId,payload){if(!els.songArtWrap||!els.songArt){return}if(modeId!=="guess_song"||!payload||!payload.track||!payload.artist){els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src");state.currentArtKey=null;return}const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentArtKey=key;const meta=await getTrackMeta(payload.track,payload.artist,payload.songLang||"en");if(state.currentArtKey!==key)return;if(meta.artworkUrl){els.songArt.src=meta.artworkUrl;els.songArtWrap.classList.remove("hide")}else{els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src")}}
-async function playClip(payload,autoplay){
+async function playClip(payload,autoplay,retry=0){
   if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}
   els.playClipBtn.style.display="block";
   const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;
@@ -1408,7 +1414,20 @@ async function playClip(payload,autoplay){
   if(state.currentClipKey!==key)return;
   state.currentClipUrl=url;
   stopClip();
-  if(!url){els.playClipBtn.textContent=t("clip_unavailable");return}
+  if(!url){
+    const r=room();
+    const canRepick=autoplay&&retry<1&&r&&r.hostId===state.me.id&&r.currentGame==="guess_song"&&r.roundState&&r.roundState.phase==="live"&&Object.keys(r.roundState.answers||{}).length===0;
+    if(canRepick){
+      const alt=await withTimeout(pickPlayableGuessPayload(r),CLIP_REPICK_TIMEOUT_MS,null);
+      if(alt&&songKey(alt)!==songKey(payload)){
+        update(x=>{if(x.roundState&&x.roundState.phase==="live"&&Object.keys(x.roundState.answers||{}).length===0)x.roundState.payload=alt;return x});
+        renderGame();
+        return playClip(alt,autoplay,retry+1);
+      }
+    }
+    els.playClipBtn.textContent=t("clip_unavailable");
+    return;
+  }
   state.audio=new Audio(url);
   state.audio.volume=.9;
   try{
