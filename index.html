@@ -603,6 +603,13 @@ const SONGS_PL=[
   {song:"Nocny lot",artist:"Bambi",year:2025,lang:"pl",wrong:["Lawenda","Millie walky","Bff"]}
 ];
 const ALL_SONGS=[...SONGS,...SONGS_PL];
+const KNOWN_PLAYABLE_FALLBACKS=[
+  {song:"Billie Jean",artist:"Michael Jackson",year:1982,lang:"en"},
+  {song:"Take On Me",artist:"a-ha",year:1985,lang:"en"},
+  {song:"Wonderwall",artist:"Oasis",year:1995,lang:"en"},
+  {song:"Poker Face",artist:"Lady Gaga",year:2008,lang:"en"},
+  {song:"Blinding Lights",artist:"The Weeknd",year:2019,lang:"en"}
+];
 const YEAR_RANGES={all:[0,9999],"1980s":[1980,1989],"1990s":[1990,1999],"2000s":[2000,2009],"2010s":[2010,2019],"2020s":[2020,2029]};
 const YEAR_FILTER_OPTIONS=["all","1980s","1990s","2000s","2010s","2020s"];
 const SONG_LANG_OPTIONS=["en","pl"];
@@ -1280,8 +1287,8 @@ async function pickPlayableGuessPayload(r){
   if(second)return guessPayloadFromSong(second,selectedLang);
   const third=await findPlayableSongFromPool(any,"guess:any:any","en");
   if(third)return guessPayloadFromSong(third,third.lang||"en");
-  const fallback=pickSongAvoidRecent(primary,`guess:${selectedLang}:${yf}`)||primary[0]||byLang[0]||any[0];
-  return guessPayloadFromSong(fallback,fallback&&fallback.lang?fallback.lang:selectedLang);
+  const guaranteed=KNOWN_PLAYABLE_FALLBACKS[randomInt(KNOWN_PLAYABLE_FALLBACKS.length)];
+  return guessPayloadFromSong(guaranteed,guaranteed.lang||"en");
 }
 function stopClip(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}if(state.audio){state.audio.pause();state.audio.currentTime=0}}
 function scheduleClipStop(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}const r=room();const left=r&&r.roundState&&r.roundState.phase==="live"?Math.max(0,r.roundState.endsAt-Date.now()):CLIP_DURATION_MS;state.clipTimeout=setTimeout(()=>stopClip(),left)}
@@ -1374,9 +1381,10 @@ async function getTrackMeta(track,artist,songLang){
   };
   const nt=norm(track),na=norm(artist);
   const artistTokens=na.split(" ").filter(t=>t.length>2);
+  const artistVariants=[artist,String(artist||"").replace(/\s+i\s+/gi," & "),String(artist||"").replace(/\s+&\s+/gi," i "),String(artist||"").replace(/\s+feat\.?\s+/gi," "),String(artist||"").replace(/\s+ft\.?\s+/gi," ")].filter(Boolean);
   let hit=null;
   for(const country of langCountries(songLang)){
-    const terms=[`${track} ${artist}`,`${artist} ${track}`,`${track}`,`${artist}`];
+    const terms=[...new Set([].concat(...artistVariants.map(a=>[`${track} ${a}`,`${a} ${track}`]),[`${track}`,`${artist}`]))];
     for(const term of terms){
       try{
         const data=await fetchItunesSearch(term,country);
