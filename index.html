@@ -1278,14 +1278,19 @@ function stopClip(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.
 function scheduleClipStop(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}const r=room();const left=r&&r.roundState&&r.roundState.phase==="live"?Math.max(0,r.roundState.endsAt-Date.now()):CLIP_DURATION_MS;state.clipTimeout=setTimeout(()=>stopClip(),left)}
 function langCountries(songLang){return songLang==="pl"?["PL","US"]:["US","PL"]}
 async function fetchJsonWithTimeout(url,timeoutMs){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),timeoutMs);
-  try{
-    const res=await fetch(url,{signal:controller.signal});
-    return await res.json();
-  }finally{
-    clearTimeout(timer);
+  if(typeof AbortController==="function"){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{
+      const res=await fetch(url,{signal:controller.signal});
+      return await res.json();
+    }finally{
+      clearTimeout(timer);
+    }
   }
+  const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error("timeout")),timeoutMs));
+  const req=fetch(url).then(r=>r.json());
+  return Promise.race([req,timeout]);
 }
 async function getTrackMeta(track,artist,songLang){
   if(!track||!artist)return {previewUrl:null,artworkUrl:null};
@@ -1303,7 +1308,8 @@ async function getTrackMeta(track,artist,songLang){
         const list=data&&data.results?data.results:[];
         const exact=list.find(x=>norm(x.trackName)===nt&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
         const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
-        hit=exact||close||null;
+        const anyPreview=list.find(x=>x&&x.previewUrl);
+        hit=exact||close||anyPreview||null;
         if(hit&&hit.previewUrl)break;
       }catch{
         // timeout/network error for a single attempt - try next term/country
