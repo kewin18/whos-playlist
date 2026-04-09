@@ -783,7 +783,7 @@ const I18N={
 };
 const $=id=>document.getElementById(id);
 const els={screens:{home:$("home"),lobby:$("lobby"),game:$("game")},topAuthBtn:$("topAuthBtn"),langBtn:$("langBtn"),badge:$("trialBadge"),homeTitle:$("homeTitle"),homeSub:$("homeSub"),homeHint:$("homeHint"),lobbyTitle:$("lobbyTitle"),lobbySub:$("lobbySub"),modeTitle:$("modeTitle"),yearWrapTitle:$("yearWrapTitle"),songLangWrap:$("songLangWrap"),songLangTitle:$("songLangTitle"),songLangChips:$("songLangChips"),roundsWrap:$("roundsWrap"),roundsTitle:$("roundsTitle"),roundsChips:$("roundsChips"),leaderboardTitle:$("leaderboardTitle"),nick:$("nicknameInput"),create:$("createBtn"),join:$("joinBtn"),joinCode:$("joinCodeInput"),confirmJoin:$("confirmJoinBtn"),roomCode:$("roomCode"),players:$("players"),modeGrid:$("modeGrid"),yearWrap:$("yearWrap"),yearFilterChips:$("yearFilterChips"),premiumState:$("premiumState"),leave:$("leaveRoomBtn"),start:$("startBtn"),gameRoundPanel:$("gameRoundPanel"),gameLeaderPanel:$("gameLeaderPanel"),gameControlsPanel:$("gameControlsPanel"),title:$("gameTitle"),round:$("roundBadge"),timer:$("timer"),timerLabel:$("timerLabel"),song:$("songBox"),songArtWrap:$("songArtWrap"),songArt:$("songArt"),playClipBtn:$("playClipBtn"),answers:$("answers"),info:$("roundInfo"),leader:$("leaderboard"),back:$("backLobbyBtn"),next:$("nextRoundBtn"),endSummary:$("endSummary"),endTitle:$("endTitle"),endWinner:$("endWinner"),endMeta:$("endMeta"),endScores:$("endScores"),endReplayBtn:$("endReplayBtn"),endBackBtn:$("endBackBtn"),overlay:$("sheetOverlay"),sheetCloseBtn:$("sheetCloseBtn"),sheetTitle:$("sheetTitle"),sheetText:$("sheetText"),sheetActions:$("sheetActions"),count:$("countdown")};
-const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},unavailablePreviewKeys:[],manualScreen:null,channel:("BroadcastChannel" in window)?new BroadcastChannel("whos-playlist-room-sync"):null};
+const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},unavailablePreviewKeys:[],manualScreen:null,volatileRooms:null,channel:("BroadcastChannel" in window)?new BroadcastChannel("whos-playlist-room-sync"):null};
 function storageGet(k){try{return localStorage.getItem(k)}catch{return null}}
 function storageSet(k,v){try{localStorage.setItem(k,v);return true}catch{return false}}
 function storageRemove(k){try{localStorage.removeItem(k);return true}catch{return false}}
@@ -938,8 +938,23 @@ function openAuthSheet(mode,onSuccess){
 }
 function requireLoginForPremium(onSuccess){sheet("Wymagane logowanie","Aby kupić premium, najpierw musisz się zalogować.",[{label:"Zaloguj",cls:"success",fn:()=>openAuthSheet("login",onSuccess)},{label:"Utwórz konto",cls:"secondary",fn:()=>openAuthSheet("register",onSuccess)},{label:"Anuluj",cls:"ghost",fn:closeSheet}])}
 function rid(n=6){const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<n;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
-function rooms(){try{return JSON.parse(storageGet(STORAGE_KEY)||"{}")}catch{return {}}}
-function setRooms(r){if(!storageSet(STORAGE_KEY,JSON.stringify(r)))return false;if(state.channel)state.channel.postMessage({type:"u"});return true}
+function rooms(){
+  try{
+    const raw=storageGet(STORAGE_KEY);
+    if(raw)return JSON.parse(raw||"{}");
+  }catch{}
+  return state.volatileRooms||{};
+}
+function setRooms(r){
+  const saved=storageSet(STORAGE_KEY,JSON.stringify(r));
+  if(!saved){
+    state.volatileRooms=deepClone(r);
+    return true;
+  }
+  state.volatileRooms=null;
+  if(state.channel)state.channel.postMessage({type:"u"});
+  return true;
+}
 function room(code=state.roomCode){if(!code)return null;return rooms()[code]||null}
 function update(mut){const all=rooms();const r=all[state.roomCode];if(!r)return null;all[state.roomCode]=mut(deepClone(r))||r;if(!setRooms(all))return null;return all[state.roomCode]}
 function show(s){Object.entries(els.screens).forEach(([k,v])=>v.classList.toggle("active",k===s))}
@@ -1464,7 +1479,23 @@ function renderGame(){
   els.back.disabled=!host;
   renderEndSummary(r);
 }
-function sync(){if(!state.roomCode)return;const r=room();if(!r){state.roomCode=null;show("home");return}const active=(document.querySelector(".screen.active")||{}).id;if(r.roundState&&r.roundState.phase&&active!=="game"&&state.manualScreen!=="lobby")show("game");const nowActive=(document.querySelector(".screen.active")||{}).id;if(nowActive==="lobby")renderLobby();if(nowActive==="game")renderGame();if(premiumOn(r)&&r.premium.type==="trial")els.badge.textContent=t("trial_active",{time:remTxt(rem(r))})}
+function sync(){
+  if(!state.roomCode)return;
+  const r=room();
+  if(!r){state.roomCode=null;show("home");return}
+  if(r.hostId===state.me.id&&r.roundState&&r.roundState.endsAt&&Date.now()>r.roundState.endsAt+800){
+    if(r.roundState.phase==="countdown"||r.roundState.phase==="prep"){
+      beginRound();
+      return;
+    }
+  }
+  const active=(document.querySelector(".screen.active")||{}).id;
+  if(r.roundState&&r.roundState.phase&&active!=="game"&&state.manualScreen!=="lobby")show("game");
+  const nowActive=(document.querySelector(".screen.active")||{}).id;
+  if(nowActive==="lobby")renderLobby();
+  if(nowActive==="game")renderGame();
+  if(premiumOn(r)&&r.premium.type==="trial")els.badge.textContent=t("trial_active",{time:remTxt(rem(r))})
+}
 function init(){
   if(isLoggedIn())state.authChoiceDone=true;
   applyStaticTexts();
