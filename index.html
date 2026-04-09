@@ -488,6 +488,8 @@ const BETWEEN_ROUNDS_MS=3000;
 const PREVIEW_PICK_ATTEMPTS=10;
 const TRACK_LOOKUP_TIMEOUT_MS=5500;
 const PREVIEW_SEARCH_BUDGET_MS=12000;
+const ROUND_PAYLOAD_TIMEOUT_MS=1800;
+const PREVIEW_CHECK_TIMEOUT_MS=1200;
 const MIN_PL_SONGS_PER_YEAR=40;
 const PREVIEW_CACHE={},TRACK_META_CACHE={};
 const YEAR_EXPANDED_CACHE={};
@@ -1214,6 +1216,12 @@ function pickSongAvoidRecent(pool,deckKey){
 function unstablePreviewSet(){
   return new Set(state.unavailablePreviewKeys.slice(-400));
 }
+function withTimeout(promise,ms,fallbackValue){
+  return Promise.race([
+    promise,
+    new Promise(resolve=>setTimeout(()=>resolve(fallbackValue),ms))
+  ]);
+}
 function filterSongsByPrefs(yearFilter,songLang,applyYear){
   const range=YEAR_RANGES[yearFilter]||YEAR_RANGES.all;
   const byLang=langPool(songLang);
@@ -1255,7 +1263,7 @@ async function pickPlayableGuessPayload(r){
       const s=pickSongAvoidRecent(pool,deckKey)||pool[randomInt(pool.length)];
       const key=`${s.song}::${s.artist}::${lang||"en"}`;
       if(blocked.has(key))continue;
-      const url=await getPreviewUrl(s.song,s.artist,lang);
+      const url=await withTimeout(getPreviewUrl(s.song,s.artist,lang),PREVIEW_CHECK_TIMEOUT_MS,null);
       if(url)return s;
       state.unavailablePreviewKeys.push(key);
       if(state.unavailablePreviewKeys.length>600)state.unavailablePreviewKeys=state.unavailablePreviewKeys.slice(-450);
@@ -1416,7 +1424,9 @@ async function beginRound(){
   state.manualScreen="game";
   const round=r.roundState&&r.roundState.round?r.roundState.round:1;
   let p=payload(r.currentGame,r.players);
-  if(r.currentGame==="guess_song")p=await pickPlayableGuessPayload(r);
+  if(r.currentGame==="guess_song"){
+    p=await withTimeout(pickPlayableGuessPayload(r),ROUND_PAYLOAD_TIMEOUT_MS,p);
+  }
   update(x=>{x.roundState={round:round,phase:"live",startedAt:Date.now(),endsAt:Date.now()+ROUND_DURATION_MS,answers:{},payload:p};return x});
   renderGame();
   if(r.currentGame==="guess_song"&&p&&p.track&&p.artist){
@@ -1434,7 +1444,7 @@ function answer(v){const r=room();if(!r||!r.roundState||r.roundState.phase!=="li
 function canContinueRounds(r){const limit=(r&&r.maxRounds!=null)?r.maxRounds:10;if(limit===0)return true;const roundNo=r&&r.roundState&&r.roundState.round?r.roundState.round:1;return roundNo<limit}
 function scheduleAutoNextRound(){if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="done"||r.roundState.gameFinished)return;const autoNextAt=Date.now()+BETWEEN_ROUNDS_MS;update(x=>{if(x.roundState)x.roundState.autoNextAt=autoNextAt;return x});state.nextRoundTimeout=setTimeout(()=>{const now=room();if(!now||now.hostId!==state.me.id||!now.roundState||now.roundState.phase!=="done"||now.roundState.gameFinished)return;nextRound()},BETWEEN_ROUNDS_MS)}
 function finishRound(){stopClip();const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="live"){renderGame();return}update(x=>{x.roundState.phase="done";const continueRounds=canContinueRounds(x);x.roundState.gameFinished=!continueRounds;x.roundState.autoNextAt=continueRounds?Date.now()+BETWEEN_ROUNDS_MS:null;const c=x.roundState.payload.correct;let fast=null,best=1e15;Object.entries(x.roundState.answers).forEach(([id,a])=>{if(a.value===c&&a.reactionMs<best){fast=id;best=a.reactionMs}});x.players=x.players.map(p=>{const a=x.roundState.answers[p.id];let add=0;if(a&&a.value===c){const left=Math.max(0,x.roundState.endsAt-(x.roundState.startedAt+a.reactionMs));add=100+Math.floor(left/20);if(x.currentGame==="fastest_finger"&&p.id===fast)add+=180}return {...p,score:p.score+add}});return x});scheduleAutoNextRound();renderGame()}
-function nextRound(){const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"prep",startedAt:Date.now(),endsAt:Date.now()+BETWEEN_ROUNDS_MS,answers:{}};return x});beginRound()}
+function nextRound(){if(state.beginRoundInFlight)return;const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"prep",startedAt:Date.now(),endsAt:Date.now()+BETWEEN_ROUNDS_MS,answers:{}};return x});beginRound()}
 function renderEndSummary(r){
   if(!els.endSummary||!els.endScores||!r||!r.roundState)return;
   const finished=!!r.roundState.gameFinished;
