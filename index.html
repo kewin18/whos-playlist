@@ -783,7 +783,7 @@ const I18N={
 };
 const $=id=>document.getElementById(id);
 const els={screens:{home:$("home"),lobby:$("lobby"),game:$("game")},topAuthBtn:$("topAuthBtn"),langBtn:$("langBtn"),badge:$("trialBadge"),homeTitle:$("homeTitle"),homeSub:$("homeSub"),homeHint:$("homeHint"),lobbyTitle:$("lobbyTitle"),lobbySub:$("lobbySub"),modeTitle:$("modeTitle"),yearWrapTitle:$("yearWrapTitle"),songLangWrap:$("songLangWrap"),songLangTitle:$("songLangTitle"),songLangChips:$("songLangChips"),roundsWrap:$("roundsWrap"),roundsTitle:$("roundsTitle"),roundsChips:$("roundsChips"),leaderboardTitle:$("leaderboardTitle"),nick:$("nicknameInput"),create:$("createBtn"),join:$("joinBtn"),joinCode:$("joinCodeInput"),confirmJoin:$("confirmJoinBtn"),roomCode:$("roomCode"),players:$("players"),modeGrid:$("modeGrid"),yearWrap:$("yearWrap"),yearFilterChips:$("yearFilterChips"),premiumState:$("premiumState"),leave:$("leaveRoomBtn"),start:$("startBtn"),gameRoundPanel:$("gameRoundPanel"),gameLeaderPanel:$("gameLeaderPanel"),gameControlsPanel:$("gameControlsPanel"),title:$("gameTitle"),round:$("roundBadge"),timer:$("timer"),timerLabel:$("timerLabel"),song:$("songBox"),songArtWrap:$("songArtWrap"),songArt:$("songArt"),playClipBtn:$("playClipBtn"),answers:$("answers"),info:$("roundInfo"),leader:$("leaderboard"),back:$("backLobbyBtn"),next:$("nextRoundBtn"),endSummary:$("endSummary"),endTitle:$("endTitle"),endWinner:$("endWinner"),endMeta:$("endMeta"),endScores:$("endScores"),endReplayBtn:$("endReplayBtn"),endBackBtn:$("endBackBtn"),overlay:$("sheetOverlay"),sheetCloseBtn:$("sheetCloseBtn"),sheetTitle:$("sheetTitle"),sheetText:$("sheetText"),sheetActions:$("sheetActions"),count:$("countdown")};
-const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},unavailablePreviewKeys:[],audioUnlocked:false,pendingAutoplayPayload:null,manualScreen:null,volatileRooms:null,beginRoundInFlight:false,lastGameStaticKey:null,lastArtworkKey:null,channel:("BroadcastChannel" in window)?new BroadcastChannel("whos-playlist-room-sync"):null};
+const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},unavailablePreviewKeys:[],audioUnlocked:false,pendingAutoplayPayload:null,manualScreen:null,volatileRooms:null,beginRoundInFlight:false,channel:("BroadcastChannel" in window)?new BroadcastChannel("whos-playlist-room-sync"):null};
 function storageGet(k){try{return localStorage.getItem(k)}catch{return null}}
 function storageSet(k,v){try{localStorage.setItem(k,v);return true}catch{return false}}
 function storageRemove(k){try{localStorage.removeItem(k);return true}catch{return false}}
@@ -1457,22 +1457,11 @@ function renderGame(){
   const done=phase==="done";
   const prep=phase==="prep";
   const mine=r.roundState.answers&&r.roundState.answers[state.me.id]?r.roundState.answers[state.me.id].value:null;
-  const scoresKey=(r.players||[]).map(x=>`${x.id}:${x.score}`).join("|");
-  const answersKey=Object.entries(r.roundState.answers||{}).map(([id,a])=>`${id}:${(a&&a.value)||""}:${(a&&a.reactionMs)||0}`).sort().join("|");
-  const staticKey=[r.currentGame||"",r.roundState.round||0,phase,p.track||"",p.artist||"",p.correct||"",mine||"",scoresKey,answersKey].join("~");
-  const needsStaticRender=state.lastGameStaticKey!==staticKey;
-
-  if(needsStaticRender){
-    els.title.textContent=modeTitle(m.id);
-    els.round.textContent=t("round_badge",{n:r.roundState.round});
-    els.song.textContent=p.song;
-    const artworkKey=`${r.currentGame||""}:${p.track||""}:${p.artist||""}:${p.songLang||""}`;
-    if(state.lastArtworkKey!==artworkKey){
-      state.lastArtworkKey=artworkKey;
-      renderSongArtwork(r.currentGame,p);
-    }
-    els.info.className="sub";
-  }
+  els.title.textContent=modeTitle(m.id);
+  els.round.textContent=t("round_badge",{n:r.roundState.round});
+  els.song.textContent=p.song;
+  renderSongArtwork(r.currentGame,p);
+  els.info.className="sub";
 
   if(prep){
     const left=Math.max(0,Math.ceil((r.roundState.endsAt-Date.now())/1000));
@@ -1522,21 +1511,19 @@ function renderGame(){
     }
   }
 
-  if(needsStaticRender){
-    els.answers.innerHTML="";
-    p.answers.forEach(a=>{
-      const b=document.createElement("button");
-      b.className="answer notranslate";
-      b.setAttribute("translate","no");
-      b.textContent=a;
-      if(!done&&mine===a)b.classList.add("sel");
-      if(done&&a===p.correct)b.classList.add("correct");
-      if(done&&mine===a&&a!==p.correct)b.classList.add("wrong");
-      b.disabled=done;
-      b.onclick=()=>answer(a);
-      els.answers.appendChild(b);
-    });
-  }
+  els.answers.innerHTML="";
+  p.answers.forEach(a=>{
+    const b=document.createElement("button");
+    b.className="answer notranslate";
+    b.setAttribute("translate","no");
+    b.textContent=a;
+    if(!done&&mine===a)b.classList.add("sel");
+    if(done&&a===p.correct)b.classList.add("correct");
+    if(done&&mine===a&&a!==p.correct)b.classList.add("wrong");
+    b.disabled=done;
+    b.onclick=()=>answer(a);
+    els.answers.appendChild(b);
+  });
 
   const clipKey=`${r.currentGame||"mode"}:${r.roundState.round||0}:${p.track||""}:${p.artist||""}`;
   if(r.roundState.phase==="live"&&r.currentGame==="guess_song"){
@@ -1548,25 +1535,20 @@ function renderGame(){
     els.playClipBtn.style.display="none";
   }
 
-  if(needsStaticRender){
-    const s=[...r.players].sort((a,b)=>b.score-a.score);
-    els.leader.innerHTML="";
-    s.forEach((p,i)=>{
-      const d=document.createElement("div");
-      d.className="row"+(i===0?" top":"");
-      const avatar=p.avatar?`<div class="lb-avatar"><img src="${p.avatar}" alt="Awatar ${p.nickname}" /></div>`:`<div class="lb-avatar">${initialsFromName(p.nickname)}</div>`;
-      d.innerHTML=`<strong>#${i+1}</strong>${avatar}<span>${p.nickname}${p.id===r.hostId?" (Prowadzący)":""}</span><strong>${p.score}</strong>`;
-      els.leader.appendChild(d);
-    });
-  }
+  const s=[...r.players].sort((a,b)=>b.score-a.score);
+  els.leader.innerHTML="";
+  s.forEach((p,i)=>{
+    const d=document.createElement("div");
+    d.className="row"+(i===0?" top":"");
+    const avatar=p.avatar?`<div class="lb-avatar"><img src="${p.avatar}" alt="Awatar ${p.nickname}" /></div>`:`<div class="lb-avatar">${initialsFromName(p.nickname)}</div>`;
+    d.innerHTML=`<strong>#${i+1}</strong>${avatar}<span>${p.nickname}${p.id===r.hostId?" (Prowadzący)":""}</span><strong>${p.score}</strong>`;
+    els.leader.appendChild(d);
+  });
   const host=r.hostId===state.me.id;
   els.next.disabled=true;
   els.next.textContent=done?(r.roundState&&r.roundState.gameFinished?t("round_finished_btn"):t("preparing_btn")):(prep?t("preparing_btn"):t("round_running_btn"));
   els.back.disabled=!host;
-  if(needsStaticRender){
-    renderEndSummary(r);
-    state.lastGameStaticKey=staticKey;
-  }
+  renderEndSummary(r);
 }
 function sync(){
   if(!state.roomCode)return;
@@ -1575,6 +1557,10 @@ function sync(){
   if(r.hostId===state.me.id&&r.roundState&&r.roundState.endsAt&&Date.now()>r.roundState.endsAt+800){
     if(r.roundState.phase==="countdown"||r.roundState.phase==="prep"){
       beginRound();
+      return;
+    }
+    if(r.roundState.phase==="live"){
+      finishRound();
       return;
     }
   }
