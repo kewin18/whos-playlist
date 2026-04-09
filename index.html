@@ -488,7 +488,7 @@ const BETWEEN_ROUNDS_MS=3000;
 const PREVIEW_PICK_ATTEMPTS=10;
 const TRACK_LOOKUP_TIMEOUT_MS=5500;
 const PREVIEW_SEARCH_BUDGET_MS=12000;
-const ROUND_PAYLOAD_TIMEOUT_MS=7000;
+const ROUND_PAYLOAD_TIMEOUT_MS=14000;
 const PREVIEW_CHECK_TIMEOUT_MS=4200;
 const MIN_PL_SONGS_PER_YEAR=40;
 const PREVIEW_CACHE={},TRACK_META_CACHE={};
@@ -1417,7 +1417,6 @@ async function playClip(payload,autoplay){
     els.playClipBtn.textContent=t("clip_click")
   }
 }
-function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown()}
 function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown();tick()}
 function beep(f,ms){try{const c=beep.c||(beep.c=new (window.AudioContext||window.webkitAudioContext)());const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>o.stop(),ms)}catch{}}
 function countdown(){
@@ -1437,7 +1436,7 @@ function countdown(){
   state.roundKickoffTimeout=setTimeout(()=>{
     const r=room();
     if(!r||r.hostId!==state.me.id||!r.roundState)return;
-    if(r.roundState.phase==="countdown"||r.roundState.phase==="prep")beginRound();
+    if(r.roundState.phase==="countdown"||r.roundState.phase==="loading")beginRound();
   },3600);
 }
 async function beginRound(){
@@ -1493,13 +1492,18 @@ function tick(){
       }
       return;
     }
-    if(phase==="prep"||phase==="countdown"){
+    if(phase==="countdown"){
       const leftMs=(r.roundState.endsAt||now)-now;
       const left=Math.max(0,Math.ceil(leftMs/1000));
       if(els.timer)els.timer.textContent=String(left);
       if(host&&leftMs<=0){
         beginRound();
       }
+      return;
+    }
+    if(phase==="loading"){
+      if(els.timer)els.timer.textContent="...";
+      return;
     }
   },120);
 }
@@ -1507,7 +1511,7 @@ function answer(v){const r=room();if(!r||!r.roundState||r.roundState.phase!=="li
 function canContinueRounds(r){const limit=(r&&r.maxRounds!=null)?r.maxRounds:10;if(limit===0)return true;const roundNo=r&&r.roundState&&r.roundState.round?r.roundState.round:1;return roundNo<limit}
 function scheduleAutoNextRound(){if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="done"||r.roundState.gameFinished)return;const autoNextAt=Date.now()+BETWEEN_ROUNDS_MS;update(x=>{if(x.roundState)x.roundState.autoNextAt=autoNextAt;return x});state.nextRoundTimeout=setTimeout(()=>{const now=room();if(!now||now.hostId!==state.me.id||!now.roundState||now.roundState.phase!=="done"||now.roundState.gameFinished)return;nextRound()},BETWEEN_ROUNDS_MS)}
 function finishRound(){stopClip();const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="live"){renderGame();return}update(x=>{x.roundState.phase="done";const continueRounds=canContinueRounds(x);x.roundState.gameFinished=!continueRounds;x.roundState.autoNextAt=continueRounds?Date.now()+BETWEEN_ROUNDS_MS:null;const c=x.roundState.payload.correct;let fast=null,best=1e15;Object.entries(x.roundState.answers).forEach(([id,a])=>{if(a.value===c&&a.reactionMs<best){fast=id;best=a.reactionMs}});x.players=x.players.map(p=>{const a=x.roundState.answers[p.id];let add=0;if(a&&a.value===c){const left=Math.max(0,x.roundState.endsAt-(x.roundState.startedAt+a.reactionMs));add=100+Math.floor(left/20);if(x.currentGame==="fastest_finger"&&p.id===fast)add+=180}return {...p,score:p.score+add}});return x});scheduleAutoNextRound();renderGame()}
-function nextRound(){if(state.beginRoundInFlight)return;const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"prep",startedAt:Date.now(),endsAt:Date.now()+BETWEEN_ROUNDS_MS,answers:{}};return x});beginRound()}
+function nextRound(){if(state.beginRoundInFlight)return;const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"loading",startedAt:Date.now(),endsAt:Date.now(),answers:{}};return x});beginRound()}
 function renderEndSummary(r){
   if(!els.endSummary||!els.endScores||!r||!r.roundState)return;
   const finished=!!r.roundState.gameFinished;
@@ -1548,9 +1552,9 @@ function renderGame(){
   const p=r.roundState.payload||{prompt:t("round_default"),song:"",answers:[],correct:""};
   const phase=r.roundState.phase;
   const done=phase==="done";
-  const prep=phase==="prep";
+  const loading=phase==="loading";
   const countdownPhase=phase==="countdown";
-  const preLive=prep||countdownPhase;
+  const preLive=loading||countdownPhase;
   const mine=r.roundState.answers&&r.roundState.answers[state.me.id]?r.roundState.answers[state.me.id].value:null;
   els.title.textContent=modeTitle(m.id);
   els.round.textContent=t("round_badge",{n:r.roundState.round});
@@ -1559,8 +1563,8 @@ function renderGame(){
   els.info.className="sub";
 
   if(preLive){
-    const left=Math.max(0,Math.ceil((r.roundState.endsAt-Date.now())/1000));
-    els.timer.textContent=String(left);
+    const left=countdownPhase?Math.max(0,Math.ceil((r.roundState.endsAt-Date.now())/1000)):null;
+    els.timer.textContent=countdownPhase?String(left):"...";
     els.timer.classList.add("prep");
     els.timer.classList.remove("live");
     if(els.timerLabel)els.timerLabel.textContent=t("timer_prep");
@@ -1658,8 +1662,15 @@ function sync(){
       return;
     }
   }
+  if(r.hostId===state.me.id&&r.roundState&&r.roundState.phase==="loading"){
+    const loadingFor=Date.now()-(r.roundState.startedAt||Date.now());
+    if(!state.beginRoundInFlight&&loadingFor>900){
+      beginRound();
+      return;
+    }
+  }
   if(r.hostId===state.me.id&&r.roundState&&r.roundState.endsAt&&Date.now()>r.roundState.endsAt+800){
-    if(r.roundState.phase==="countdown"||r.roundState.phase==="prep"){
+    if(r.roundState.phase==="countdown"){
       beginRound();
       return;
     }
