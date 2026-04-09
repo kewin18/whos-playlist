@@ -1292,7 +1292,7 @@ async function pickPlayableGuessPayload(r){
 }
 function stopClip(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}if(state.audio){state.audio.pause();state.audio.currentTime=0}}
 function scheduleClipStop(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}const r=room();const left=r&&r.roundState&&r.roundState.phase==="live"?Math.max(0,r.roundState.endsAt-Date.now()):CLIP_DURATION_MS;state.clipTimeout=setTimeout(()=>stopClip(),left)}
-function langCountries(songLang){return songLang==="pl"?["PL","US"]:["US","PL"]}
+function langCountries(songLang){return songLang==="pl"?["PL","US","GB"]:["US","GB","PL"]}
 async function unlockAudio(){
   if(state.audioUnlocked)return true;
   try{
@@ -1363,7 +1363,7 @@ async function fetchJsonp(url,timeoutMs){
 }
 async function fetchItunesSearch(term,country){
   const q=encodeURIComponent(term);
-  const url=`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=15&country=${country}`;
+  const url=`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=30&country=${country}`;
   try{
     return await fetchJsonWithTimeout(url,TRACK_LOOKUP_TIMEOUT_MS);
   }catch{
@@ -1397,10 +1397,16 @@ async function getTrackMeta(track,artist,songLang){
     if(isBadVersion(x.trackName)||isBadVersion(x.artistName)||isBadVersion(x.collectionName))score-=5;
     return score;
   };
+  const stripBrackets=s=>String(s||"").replace(/\([^)]*\)/g," ").replace(/\[[^\]]*\]/g," ").replace(/\s{2,}/g," ").trim();
+  const trackVariants=[track,stripBrackets(track),String(track||"").replace(/[!?]/g," ").trim()].filter(Boolean);
   const artistVariants=[artist,String(artist||"").replace(/\s+i\s+/gi," & "),String(artist||"").replace(/\s+&\s+/gi," i "),String(artist||"").replace(/\s+feat\.?\s+/gi," "),String(artist||"").replace(/\s+ft\.?\s+/gi," ")].filter(Boolean);
   let hit=null;
   for(const country of langCountries(songLang)){
-    const terms=[...new Set([].concat(...artistVariants.map(a=>[`${track} ${a}`,`${a} ${track}`]),[`${track}`,`${artist}`]))];
+    const terms=[...new Set([].concat(
+      ...trackVariants.map(tk=>artistVariants.flatMap(a=>[`${tk} ${a}`,`${a} ${tk}`])),
+      trackVariants,
+      artistVariants
+    ))];
     for(const term of terms){
       try{
         const data=await fetchItunesSearch(term,country);
@@ -1418,10 +1424,14 @@ async function getTrackMeta(track,artist,songLang){
     if(hit&&hit.previewUrl)break;
   }
   const meta={previewUrl:hit&&hit.previewUrl?hit.previewUrl:null,artworkUrl:hit&&hit.artworkUrl100?String(hit.artworkUrl100).replace("100x100bb","600x600bb"):null};
-  TRACK_META_CACHE[key]=meta;
-  return TRACK_META_CACHE[key];
+  // Nie cache'ujemy trwałe braków, bo timeout sieci potrafi chwilowo zwrócić null
+  // i blokować dany numer przez całą sesję.
+  if(meta.previewUrl||meta.artworkUrl){
+    TRACK_META_CACHE[key]=meta;
+  }
+  return meta;
 }
-async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);PREVIEW_CACHE[key]=meta.previewUrl;return PREVIEW_CACHE[key]}
+async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);if(meta.previewUrl)PREVIEW_CACHE[key]=meta.previewUrl;return meta.previewUrl||null}
 async function renderSongArtwork(modeId,payload){if(!els.songArtWrap||!els.songArt){return}if(modeId!=="guess_song"||!payload||!payload.track||!payload.artist){els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src");state.currentArtKey=null;return}const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentArtKey=key;const meta=await getTrackMeta(payload.track,payload.artist,payload.songLang||"en");if(state.currentArtKey!==key)return;if(meta.artworkUrl){els.songArt.src=meta.artworkUrl;els.songArtWrap.classList.remove("hide")}else{els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src")}}
 async function playClip(payload,autoplay){
   if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}
