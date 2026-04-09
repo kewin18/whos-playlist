@@ -783,7 +783,7 @@ const I18N={
 };
 const $=id=>document.getElementById(id);
 const els={screens:{home:$("home"),lobby:$("lobby"),game:$("game")},topAuthBtn:$("topAuthBtn"),langBtn:$("langBtn"),badge:$("trialBadge"),homeTitle:$("homeTitle"),homeSub:$("homeSub"),homeHint:$("homeHint"),lobbyTitle:$("lobbyTitle"),lobbySub:$("lobbySub"),modeTitle:$("modeTitle"),yearWrapTitle:$("yearWrapTitle"),songLangWrap:$("songLangWrap"),songLangTitle:$("songLangTitle"),songLangChips:$("songLangChips"),roundsWrap:$("roundsWrap"),roundsTitle:$("roundsTitle"),roundsChips:$("roundsChips"),leaderboardTitle:$("leaderboardTitle"),nick:$("nicknameInput"),create:$("createBtn"),join:$("joinBtn"),joinCode:$("joinCodeInput"),confirmJoin:$("confirmJoinBtn"),roomCode:$("roomCode"),players:$("players"),modeGrid:$("modeGrid"),yearWrap:$("yearWrap"),yearFilterChips:$("yearFilterChips"),premiumState:$("premiumState"),leave:$("leaveRoomBtn"),start:$("startBtn"),gameRoundPanel:$("gameRoundPanel"),gameLeaderPanel:$("gameLeaderPanel"),gameControlsPanel:$("gameControlsPanel"),title:$("gameTitle"),round:$("roundBadge"),timer:$("timer"),timerLabel:$("timerLabel"),song:$("songBox"),songArtWrap:$("songArtWrap"),songArt:$("songArt"),playClipBtn:$("playClipBtn"),answers:$("answers"),info:$("roundInfo"),leader:$("leaderboard"),back:$("backLobbyBtn"),next:$("nextRoundBtn"),endSummary:$("endSummary"),endTitle:$("endTitle"),endWinner:$("endWinner"),endMeta:$("endMeta"),endScores:$("endScores"),endReplayBtn:$("endReplayBtn"),endBackBtn:$("endBackBtn"),overlay:$("sheetOverlay"),sheetCloseBtn:$("sheetCloseBtn"),sheetTitle:$("sheetTitle"),sheetText:$("sheetText"),sheetActions:$("sheetActions"),count:$("countdown")};
-const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},unavailablePreviewKeys:[],audioUnlocked:false,pendingAutoplayPayload:null,manualScreen:null,volatileRooms:null,beginRoundInFlight:false,channel:("BroadcastChannel" in window)?new BroadcastChannel("whos-playlist-room-sync"):null};
+const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,roundKickoffTimeout:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},unavailablePreviewKeys:[],audioUnlocked:false,pendingAutoplayPayload:null,manualScreen:null,volatileRooms:null,beginRoundInFlight:false,channel:("BroadcastChannel" in window)?new BroadcastChannel("whos-playlist-room-sync"):null};
 function storageGet(k){try{return localStorage.getItem(k)}catch{return null}}
 function storageSet(k,v){try{localStorage.setItem(k,v);return true}catch{return false}}
 function storageRemove(k){try{localStorage.removeItem(k);return true}catch{return false}}
@@ -1386,11 +1386,31 @@ async function renderSongArtwork(modeId,payload){if(!els.songArtWrap||!els.songA
 async function playClip(payload,autoplay){if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}els.playClipBtn.style.display="block";const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentClipKey=key;const url=await getPreviewUrl(payload.track,payload.artist,payload.songLang||"en");if(state.currentClipKey!==key)return;state.currentClipUrl=url;stopClip();if(!url){els.playClipBtn.textContent=t("clip_unavailable");return}state.audio=new Audio(url);state.audio.volume=.9;try{if(autoplay)await state.audio.play();else{await unlockAudio();await state.audio.play()}scheduleClipStop();els.playClipBtn.textContent=t("clip_replay")}catch{state.pendingAutoplayPayload=payload;els.playClipBtn.textContent=t("clip_click")}}
 function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown()}
 function beep(f,ms){try{const c=beep.c||(beep.c=new (window.AudioContext||window.webkitAudioContext)());const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>o.stop(),ms)}catch{}}
-function countdown(){clearInterval(state.countdown);let n=3;els.count.textContent=String(n);els.count.classList.add("show");beep(880,120);state.countdown=setInterval(()=>{n--;if(n>0){els.count.textContent=String(n);beep(880+(3-n)*60,120);return}clearInterval(state.countdown);els.count.classList.remove("show");beginRound()},1000)}
+function countdown(){
+  clearInterval(state.countdown);
+  if(state.roundKickoffTimeout){clearTimeout(state.roundKickoffTimeout);state.roundKickoffTimeout=null}
+  let n=3;
+  els.count.textContent=String(n);
+  els.count.classList.add("show");
+  beep(880,120);
+  state.countdown=setInterval(()=>{
+    n--;
+    if(n>0){els.count.textContent=String(n);beep(880+(3-n)*60,120);return}
+    clearInterval(state.countdown);
+    els.count.classList.remove("show");
+    beginRound();
+  },1000);
+  state.roundKickoffTimeout=setTimeout(()=>{
+    const r=room();
+    if(!r||r.hostId!==state.me.id||!r.roundState)return;
+    if(r.roundState.phase==="countdown"||r.roundState.phase==="prep")beginRound();
+  },3600);
+}
 async function beginRound(){
   if(state.beginRoundInFlight)return;
   state.beginRoundInFlight=true;
   try{
+  if(state.roundKickoffTimeout){clearTimeout(state.roundKickoffTimeout);state.roundKickoffTimeout=null}
   const r=room();
   if(!r)return;
   state.manualScreen="game";
@@ -1456,6 +1476,8 @@ function renderGame(){
   const phase=r.roundState.phase;
   const done=phase==="done";
   const prep=phase==="prep";
+  const countdownPhase=phase==="countdown";
+  const preLive=prep||countdownPhase;
   const mine=r.roundState.answers&&r.roundState.answers[state.me.id]?r.roundState.answers[state.me.id].value:null;
   els.title.textContent=modeTitle(m.id);
   els.round.textContent=t("round_badge",{n:r.roundState.round});
@@ -1463,7 +1485,7 @@ function renderGame(){
   renderSongArtwork(r.currentGame,p);
   els.info.className="sub";
 
-  if(prep){
+  if(preLive){
     const left=Math.max(0,Math.ceil((r.roundState.endsAt-Date.now())/1000));
     els.timer.textContent=String(left);
     els.timer.classList.add("prep");
@@ -1512,18 +1534,20 @@ function renderGame(){
   }
 
   els.answers.innerHTML="";
-  p.answers.forEach(a=>{
-    const b=document.createElement("button");
-    b.className="answer notranslate";
-    b.setAttribute("translate","no");
-    b.textContent=a;
-    if(!done&&mine===a)b.classList.add("sel");
-    if(done&&a===p.correct)b.classList.add("correct");
-    if(done&&mine===a&&a!==p.correct)b.classList.add("wrong");
-    b.disabled=done;
-    b.onclick=()=>answer(a);
-    els.answers.appendChild(b);
-  });
+  if(!preLive){
+    p.answers.forEach(a=>{
+      const b=document.createElement("button");
+      b.className="answer notranslate";
+      b.setAttribute("translate","no");
+      b.textContent=a;
+      if(!done&&mine===a)b.classList.add("sel");
+      if(done&&a===p.correct)b.classList.add("correct");
+      if(done&&mine===a&&a!==p.correct)b.classList.add("wrong");
+      b.disabled=done;
+      b.onclick=()=>answer(a);
+      els.answers.appendChild(b);
+    });
+  }
 
   const clipKey=`${r.currentGame||"mode"}:${r.roundState.round||0}:${p.track||""}:${p.artist||""}`;
   if(r.roundState.phase==="live"&&r.currentGame==="guess_song"){
@@ -1546,7 +1570,7 @@ function renderGame(){
   });
   const host=r.hostId===state.me.id;
   els.next.disabled=true;
-  els.next.textContent=done?(r.roundState&&r.roundState.gameFinished?t("round_finished_btn"):t("preparing_btn")):(prep?t("preparing_btn"):t("round_running_btn"));
+  els.next.textContent=done?(r.roundState&&r.roundState.gameFinished?t("round_finished_btn"):t("preparing_btn")):(preLive?t("preparing_btn"):t("round_running_btn"));
   els.back.disabled=!host;
   renderEndSummary(r);
 }
