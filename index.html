@@ -1381,6 +1381,22 @@ async function getTrackMeta(track,artist,songLang){
   };
   const nt=norm(track),na=norm(artist);
   const artistTokens=na.split(" ").filter(t=>t.length>2);
+  const isBadVersion=name=>{
+    const n=norm(name);
+    return /\b(karaoke|instrumental|tribute|cover|remix|remastered|version|edit|live|sped up|slowed)\b/.test(n);
+  };
+  const scoreCandidate=x=>{
+    if(!x||!x.previewUrl)return -999;
+    const tx=norm(x.trackName),ax=norm(x.artistName);
+    let score=0;
+    if(tx===nt)score+=6;
+    else if(tx.includes(nt)||nt.includes(tx))score+=3;
+    if(ax===na)score+=6;
+    else if(ax.includes(na)||na.includes(ax))score+=4;
+    score+=artistTokens.reduce((acc,t)=>acc+(ax.includes(t)?1:0),0);
+    if(isBadVersion(x.trackName)||isBadVersion(x.artistName)||isBadVersion(x.collectionName))score-=5;
+    return score;
+  };
   const artistVariants=[artist,String(artist||"").replace(/\s+i\s+/gi," & "),String(artist||"").replace(/\s+&\s+/gi," i "),String(artist||"").replace(/\s+feat\.?\s+/gi," "),String(artist||"").replace(/\s+ft\.?\s+/gi," ")].filter(Boolean);
   let hit=null;
   for(const country of langCountries(songLang)){
@@ -1389,13 +1405,11 @@ async function getTrackMeta(track,artist,songLang){
       try{
         const data=await fetchItunesSearch(term,country);
         const list=data&&data.results?data.results:[];
-        const exact=list.find(x=>norm(x.trackName)===nt&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
-        const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
-        const artistClose=list.find(x=>{
-          const tx=norm(x.trackName),ax=norm(x.artistName);
-          return (tx.includes(nt)||nt.includes(tx))&&artistTokens.some(t=>ax.includes(t));
-        });
-        hit=exact||close||artistClose||null;
+        const ranked=list
+          .filter(x=>x&&x.previewUrl)
+          .map(x=>({x,score:scoreCandidate(x)}))
+          .sort((a,b)=>b.score-a.score);
+        hit=ranked.length&&ranked[0].score>=4?ranked[0].x:null;
         if(hit&&hit.previewUrl)break;
       }catch{
         // timeout/network error for a single attempt - try next term/country
@@ -1409,7 +1423,7 @@ async function getTrackMeta(track,artist,songLang){
 }
 async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);PREVIEW_CACHE[key]=meta.previewUrl;return PREVIEW_CACHE[key]}
 async function renderSongArtwork(modeId,payload){if(!els.songArtWrap||!els.songArt){return}if(modeId!=="guess_song"||!payload||!payload.track||!payload.artist){els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src");state.currentArtKey=null;return}const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentArtKey=key;const meta=await getTrackMeta(payload.track,payload.artist,payload.songLang||"en");if(state.currentArtKey!==key)return;if(meta.artworkUrl){els.songArt.src=meta.artworkUrl;els.songArtWrap.classList.remove("hide")}else{els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src")}}
-async function playClip(payload,autoplay,retry=0){
+async function playClip(payload,autoplay){
   if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}
   els.playClipBtn.style.display="block";
   const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;
@@ -1423,16 +1437,6 @@ async function playClip(payload,autoplay,retry=0){
   state.currentClipUrl=url;
   stopClip();
   if(!url){
-    const r=room();
-    const canRepick=autoplay&&retry<1&&r&&r.hostId===state.me.id&&r.currentGame==="guess_song"&&r.roundState&&r.roundState.phase==="live"&&Object.keys(r.roundState.answers||{}).length===0;
-    if(canRepick){
-      const alt=await withTimeout(pickPlayableGuessPayload(r),CLIP_REPICK_TIMEOUT_MS,null);
-      if(alt&&songKey(alt)!==songKey(payload)){
-        update(x=>{if(x.roundState&&x.roundState.phase==="live"&&Object.keys(x.roundState.answers||{}).length===0)x.roundState.payload=alt;return x});
-        renderGame();
-        return playClip(alt,autoplay,retry+1);
-      }
-    }
     els.playClipBtn.textContent=t("clip_unavailable");
     return;
   }
