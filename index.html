@@ -1,0 +1,1411 @@
+﻿
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#060b16" />
+<title>Who's Playlist</title>
+<link rel="manifest" href="./manifest.webmanifest" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bungee:wght@400&family=Space+Grotesk:wght@400;600;700;800&display=swap');
+:root{
+  --p1:#ff2d95;
+  --p2:#ff6b00;
+  --p3:#ffe100;
+  --p4:#23ffb8;
+  --p5:#18d5ff;
+  --p6:#6a5cff;
+  --ink:#0b0320;
+  --text:#fff9ff;
+  --muted:#f4d8ff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;min-height:100%;overflow:auto;overflow-x:hidden;color:var(--text);
+  font-family:"Space Grotesk","Segoe UI",sans-serif;
+  background:
+    radial-gradient(42rem 42rem at -8% -12%,rgba(255,45,149,.58),transparent 60%),
+    radial-gradient(34rem 34rem at 108% -8%,rgba(24,213,255,.52),transparent 62%),
+    radial-gradient(44rem 44rem at 52% 106%,rgba(255,225,0,.35),transparent 62%),
+    linear-gradient(130deg,#200138,#120325 45%,#001a3b 75%,#041425);
+}
+body::before{
+  content:"";position:fixed;inset:-10% -20%;pointer-events:none;z-index:0;
+  background:
+    conic-gradient(from 220deg,rgba(255,255,255,.16),transparent 25%,rgba(255,255,255,.1),transparent 55%),
+    linear-gradient(100deg,transparent 20%,rgba(255,255,255,.08)50%,transparent 80%);
+  mix-blend-mode:soft-light;filter:blur(2px);animation:glide 10s linear infinite;
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(rgba(255,255,255,.2) .8px,transparent 1px);
+  background-size:14px 14px;opacity:.13;
+}
+.app{
+  position:relative;z-index:1;width:min(100vw,840px);min-height:100dvh;margin:0 auto;
+  padding:14px;display:flex;flex-direction:column;gap:12px;
+}
+.panel{
+  border:2px solid rgba(255,255,255,.34);
+  background:
+    linear-gradient(140deg,rgba(255,255,255,.2),rgba(255,255,255,.04) 38%),
+    rgba(13,6,36,.63);
+  border-radius:24px;backdrop-filter:blur(14px);
+  box-shadow:
+    0 18px 44px rgba(5,0,20,.55),
+    0 0 0 1px rgba(255,255,255,.2) inset,
+    0 0 38px rgba(255,45,149,.26),
+    0 0 32px rgba(24,213,255,.22);
+}
+.top{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:64px;padding:10px 14px;
+}
+#authLangWrap{display:flex;align-items:center;gap:6px}
+.brand{
+  font-family:"Bungee","Space Grotesk",sans-serif;
+  font-size:1.2rem;letter-spacing:.6px;line-height:1;
+  color:#fff7de;text-shadow:0 0 12px rgba(255,225,0,.55),0 0 24px rgba(255,45,149,.35),0 0 26px rgba(24,213,255,.3);
+}
+.badge{
+  border:2px solid rgba(255,255,255,.52);border-radius:999px;padding:7px 12px;font-size:.76rem;
+  background:linear-gradient(120deg,rgba(255,45,149,.35),rgba(106,92,255,.28),rgba(24,213,255,.3));
+  color:#fff;font-weight:700;box-shadow:0 0 20px rgba(255,45,149,.25);cursor:pointer;transition:transform .12s ease,filter .16s ease;
+}
+.badge:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.screen{display:none;flex:1;min-height:0;animation:in .3s ease}
+.screen.active{display:flex;flex-direction:column;gap:12px;overflow-y:auto;overflow-x:hidden;padding-bottom:10px}
+.card{padding:16px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.grid{display:grid;gap:10px}
+.two{grid-template-columns:1fr 1fr}
+h1,h2,h3,p{margin:0}
+h1{
+  font-family:"Bungee","Space Grotesk",sans-serif;font-size:clamp(1.45rem,6vw,2.2rem);line-height:1.05;letter-spacing:.5px;
+  color:#fff8d8;text-shadow:0 0 12px rgba(255,225,0,.36);
+}
+h2,h3{letter-spacing:.3px}
+.sub{color:var(--muted);font-size:.95rem;line-height:1.35;margin-top:6px}
+button,input,select{width:100%;border:0;border-radius:16px;font:inherit;outline:none}
+input,select{
+  min-height:50px;padding:13px 12px;font-weight:600;color:#fff;
+  border:2px solid rgba(255,255,255,.45);
+  background:linear-gradient(130deg,rgba(255,255,255,.24),rgba(255,255,255,.08));
+  box-shadow:0 0 18px rgba(24,213,255,.15) inset;
+}
+input::placeholder{color:#ffe3f8}
+select option{background:#fff;color:#25003b}
+button{
+  min-height:50px;padding:12px 12px;cursor:pointer;color:#fff;
+  font-family:"Bungee","Space Grotesk",sans-serif;font-size:.96rem;letter-spacing:.45px;
+  background:
+    linear-gradient(125deg,var(--p1),var(--p2) 28%,var(--p3) 52%,var(--p4) 72%,var(--p5));
+  border:2px solid rgba(255,255,255,.48);
+  box-shadow:0 8px 0 rgba(0,0,0,.26),0 14px 24px rgba(255,45,149,.4),0 0 26px rgba(24,213,255,.28);
+  transition:transform .12s ease,filter .16s ease,box-shadow .2s ease;
+}
+button:hover{filter:saturate(1.2) brightness(1.08);transform:translateY(-1px)}
+button:active{transform:translateY(2px);box-shadow:0 4px 0 rgba(0,0,0,.3),0 8px 14px rgba(255,45,149,.32)}
+button.secondary{
+  background:linear-gradient(120deg,#6a5cff,#18d5ff 55%,#23ffb8);
+}
+button.success{
+  color:#032214;
+  background:linear-gradient(130deg,#23ffb8,#00e17f 40%,#ffe100 85%);
+}
+button.warn{
+  color:#330a00;
+  background:linear-gradient(124deg,#ffe100,#ff9e00 40%,#ff2d95);
+}
+button.ghost{
+  background:linear-gradient(130deg,rgba(255,255,255,.22),rgba(255,255,255,.08));
+  border:2px dashed rgba(255,255,255,.56);
+  box-shadow:0 0 0 rgba(0,0,0,0);
+}
+button:disabled{opacity:.6;cursor:not-allowed;filter:grayscale(.2)}
+.room{
+  font-family:"Bungee","Space Grotesk",sans-serif;
+  font-size:clamp(1.6rem,9vw,2.5rem);line-height:1;text-align:center;letter-spacing:6px;margin:6px 0 10px;
+  color:#fff8c6;text-shadow:0 0 14px rgba(255,225,0,.65),0 0 28px rgba(255,45,149,.4),0 0 30px rgba(24,213,255,.35);
+}
+.players{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.player{
+  border:2px solid rgba(255,255,255,.34);border-radius:14px;padding:9px;
+  background:linear-gradient(130deg,rgba(255,255,255,.2),rgba(255,255,255,.06));
+  font-size:.86rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;
+}
+.me{
+  border-color:rgba(35,255,184,.95);
+  box-shadow:0 0 0 2px rgba(35,255,184,.28) inset,0 0 16px rgba(35,255,184,.28);
+}
+.mode-grid{display:grid;gap:8px}
+.mode{
+  padding:12px;border-radius:14px;text-align:left;
+  border:2px solid rgba(255,255,255,.34);
+  background:linear-gradient(130deg,rgba(255,255,255,.24),rgba(255,255,255,.08));
+  display:grid;gap:4px;
+}
+.mode small{font-size:.76rem;color:#ffeaff}
+.mode.sel{
+  border-color:rgba(24,213,255,.95);
+  box-shadow:0 0 0 2px rgba(24,213,255,.38) inset,0 0 18px rgba(24,213,255,.35);
+}
+.premium{
+  background:
+    linear-gradient(130deg,rgba(255,45,149,.35),rgba(106,92,255,.3) 52%,rgba(24,213,255,.24)),
+    rgba(255,255,255,.06);
+}
+.year-wrap{margin-top:10px;display:grid;gap:8px}
+.year-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.year-chip{
+  min-height:44px;padding:8px 10px;border-radius:12px;border:2px solid rgba(255,255,255,.36);
+  background:linear-gradient(130deg,rgba(255,255,255,.2),rgba(255,255,255,.08));
+  color:#fff;font-weight:800;font-size:.84rem;cursor:pointer;transition:transform .12s ease,box-shadow .15s ease,border-color .12s ease,filter .15s ease;
+}
+.year-chip:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.year-chip.active{
+  border-color:rgba(24,213,255,.98);
+  background:linear-gradient(130deg,rgba(24,213,255,.46),rgba(106,92,255,.36));
+  box-shadow:0 0 0 2px rgba(24,213,255,.4) inset,0 0 16px rgba(24,213,255,.3);
+}
+.year-chip:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.timer{
+  margin-top:8px;min-height:114px;padding:12px 8px;border-radius:20px;
+  border:2px solid rgba(255,255,255,.55);
+  background:linear-gradient(135deg,rgba(255,225,0,.2),rgba(255,45,149,.2),rgba(24,213,255,.18));
+  box-shadow:0 10px 26px rgba(0,0,0,.28),0 0 24px rgba(255,225,0,.18) inset,0 0 26px rgba(255,45,149,.22);
+  display:flex;align-items:center;justify-content:center;
+  font-family:"Bungee","Space Grotesk",sans-serif;
+  font-size:clamp(2.4rem,13vw,3.8rem);line-height:.95;text-align:center;
+  color:#fff7bc;text-shadow:0 0 14px rgba(255,225,0,.7),0 0 24px rgba(255,45,149,.45);
+  animation:bounce 1s ease-in-out infinite;
+}
+.timer.live{
+  border-color:rgba(255,225,0,.92);
+  box-shadow:0 0 0 2px rgba(255,225,0,.24) inset,0 10px 26px rgba(0,0,0,.28),0 0 30px rgba(255,45,149,.25);
+}
+.timer.prep{
+  color:#d8fff2;
+  border-color:rgba(35,255,184,.95);
+  background:linear-gradient(135deg,rgba(35,255,184,.35),rgba(24,213,255,.26),rgba(106,92,255,.22));
+  box-shadow:0 0 0 2px rgba(35,255,184,.28) inset,0 10px 26px rgba(0,0,0,.28),0 0 32px rgba(35,255,184,.35);
+}
+.timer-label{
+  margin-top:6px;
+  text-align:center;
+  font-family:"Bungee","Space Grotesk",sans-serif;
+  letter-spacing:.7px;
+  font-size:.72rem;
+  color:#fff4d8;
+  opacity:.96;
+}
+.song{
+  margin-top:8px;min-height:58px;padding:12px;border-radius:14px;
+  border:2px solid rgba(255,255,255,.42);
+  background:linear-gradient(130deg,rgba(255,255,255,.24),rgba(255,255,255,.08));
+  display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;
+}
+.song-art-wrap{margin-top:8px;display:flex;justify-content:center}
+.song-art{
+  width:min(48vw,180px);aspect-ratio:1/1;border-radius:14px;object-fit:cover;
+  border:2px solid rgba(255,255,255,.52);
+  box-shadow:0 10px 22px rgba(0,0,0,.35),0 0 20px rgba(24,213,255,.28);
+}
+.answers{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow-x:hidden}
+.answer{
+  min-height:58px;padding:10px;font-family:"Space Grotesk","Segoe UI",sans-serif;font-size:.96rem;font-weight:800;
+  border:2px solid rgba(255,255,255,.44);
+  background:linear-gradient(130deg,rgba(255,255,255,.25),rgba(255,255,255,.08));
+  transition:transform .12s ease,box-shadow .16s ease,border-color .14s ease,filter .15s ease;
+}
+.answer.sel{
+  border-color:rgba(24,213,255,1);
+  background:linear-gradient(130deg,rgba(24,213,255,.46),rgba(106,92,255,.36));
+  box-shadow:0 0 0 2px rgba(24,213,255,.45) inset,0 0 22px rgba(24,213,255,.35);
+  transform:scale(1.03);
+}
+.answer.correct{
+  border-color:rgba(35,255,184,.98);
+  background:linear-gradient(130deg,rgba(35,255,184,.44),rgba(35,255,184,.16));
+  box-shadow:0 0 20px rgba(35,255,184,.35);
+}
+.answer.wrong{
+  border-color:rgba(255,45,149,.95);
+  background:linear-gradient(130deg,rgba(255,45,149,.4),rgba(255,45,149,.16));
+  box-shadow:0 0 20px rgba(255,45,149,.3);
+}
+@media (hover:hover){
+  .answer:hover{
+    border-color:rgba(255,255,255,.82);
+    background:linear-gradient(130deg,rgba(255,255,255,.34),rgba(255,255,255,.11));
+    box-shadow:0 0 20px rgba(255,225,0,.25),0 0 18px rgba(24,213,255,.22);
+    transform:translateY(-1px);
+  }
+}
+.answer:focus-visible{border-color:rgba(24,213,255,.98);box-shadow:0 0 0 2px rgba(24,213,255,.45)}
+#roundInfo{
+  margin-top:10px;padding:14px;border-radius:14px;text-align:center;
+  border:2px solid rgba(255,255,255,.42);
+  background:linear-gradient(130deg,rgba(255,255,255,.24),rgba(255,255,255,.08));
+  font-family:"Bungee","Space Grotesk",sans-serif;font-size:1rem;line-height:1.2;letter-spacing:.4px;
+}
+#roundInfo.info-pick{border-color:rgba(24,213,255,.98);box-shadow:0 0 20px rgba(24,213,255,.3)}
+#roundInfo.info-ok{
+  border-color:rgba(35,255,184,.98);
+  background:linear-gradient(130deg,rgba(35,255,184,.35),rgba(35,255,184,.12));
+  color:#eafff7;box-shadow:0 0 24px rgba(35,255,184,.36);
+}
+#roundInfo.info-bad{
+  border-color:rgba(255,45,149,.95);
+  background:linear-gradient(130deg,rgba(255,45,149,.34),rgba(255,45,149,.12));
+  color:#ffeaf7;box-shadow:0 0 24px rgba(255,45,149,.32);
+}
+.leader{display:grid;gap:8px;margin-top:8px}
+.row{
+  display:grid;grid-template-columns:34px 40px 1fr auto;gap:8px;align-items:center;padding:9px;border-radius:13px;
+  border:2px solid rgba(255,255,255,.34);
+  background:linear-gradient(130deg,rgba(255,255,255,.2),rgba(255,255,255,.07));
+  font-weight:700;
+}
+.end-summary{
+  margin-top:10px;
+  border:2px solid rgba(255,255,255,.46);
+  border-radius:16px;
+  padding:12px;
+  background:linear-gradient(130deg,rgba(255,255,255,.24),rgba(255,255,255,.08));
+  display:grid;
+  gap:8px;
+}
+.end-winner{
+  font-family:"Bungee","Space Grotesk",sans-serif;
+  color:#fff8c6;
+  text-shadow:0 0 12px rgba(255,225,0,.5);
+  font-size:.95rem;
+  line-height:1.25;
+}
+.end-meta{font-size:.8rem;color:#ffe6f8}
+.end-scores{display:grid;gap:6px}
+.end-score{
+  display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:8px;
+  border:2px solid rgba(255,255,255,.34);
+  border-radius:12px;
+  padding:8px;
+  background:linear-gradient(130deg,rgba(255,255,255,.2),rgba(255,255,255,.06));
+  font-weight:700;
+}
+.end-score.top{
+  border-color:rgba(255,225,0,.95);
+  box-shadow:0 0 16px rgba(255,225,0,.24),0 0 12px rgba(255,45,149,.18) inset;
+}
+.end-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row.top{
+  border-color:rgba(255,225,0,.98);
+  box-shadow:0 0 22px rgba(255,225,0,.3),0 0 18px rgba(255,45,149,.22) inset;
+}
+.lb-avatar{
+  width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(255,255,255,.5);overflow:hidden;
+  background:linear-gradient(135deg,#6a5cff,#18d5ff,#23ffb8);
+  color:#12051f;font-family:"Bungee","Space Grotesk",sans-serif;font-size:.68rem;line-height:1;
+  text-transform:uppercase;letter-spacing:.4px;
+}
+.lb-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.overlay{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.62);z-index:100}
+.overlay.show{display:flex}
+.sheet{
+  width:min(100vw,840px);border-radius:26px 26px 0 0;padding:18px;display:grid;gap:10px;
+  border:2px solid rgba(255,255,255,.4);border-bottom:0;
+  background:linear-gradient(180deg,#340f63,#001c4a);
+  box-shadow:0 -18px 40px rgba(0,0,0,.42);
+  max-height:92dvh;
+  overflow-y:auto;
+  position:relative;
+}
+#sheetTitle{padding-right:86px}
+#sheetText{white-space:pre-line}
+.sheet-close{
+  position:absolute;top:10px;right:10px;z-index:3;
+  width:auto;min-height:36px;padding:6px 10px;border-radius:12px;
+  font-size:.7rem;letter-spacing:.2px;
+  background:linear-gradient(130deg,rgba(255,255,255,.24),rgba(255,255,255,.1));
+  border:2px solid rgba(255,255,255,.55);
+  box-shadow:0 0 0 rgba(0,0,0,0);
+}
+.plans-wrap{display:grid;gap:10px}
+.plans-frame{
+  border:2px solid rgba(255,255,255,.38);
+  border-radius:22px;
+  padding:10px;
+  background:linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+  box-shadow:inset 0 0 18px rgba(0,0,0,.24),0 0 22px rgba(24,213,255,.12);
+}
+.plan-cards{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:100%;
+  gap:10px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:2px 2px 8px;
+  scroll-snap-type:x mandatory;
+  scrollbar-width:none;
+}
+.plan-cards::-webkit-scrollbar{display:none}
+.plan-card{
+  border:2px solid rgba(255,255,255,.35);
+  border-radius:18px;
+  padding:12px;
+  background:linear-gradient(130deg,rgba(255,255,255,.2),rgba(255,255,255,.08));
+  display:grid;
+  gap:9px;
+  scroll-snap-align:start;
+  width:min(360px,92%);
+  justify-self:center;
+}
+.plan-card strong{font-size:1.02rem}
+.plan-card .plan-note{font-size:.85rem;color:#ffeef8}
+.plan-section-title{font-size:.75rem;color:#fff4d8;opacity:.82;text-transform:uppercase;letter-spacing:.7px}
+.plan-bullets{font-size:.82rem;color:#fff;opacity:.95;line-height:1.35}
+.plan-price-line{font-family:"Bungee","Space Grotesk",sans-serif;font-size:.95rem;color:#fff8c6;text-shadow:0 0 10px rgba(255,225,0,.35)}
+.plan-card.free{border-color:rgba(24,213,255,.8);box-shadow:0 0 14px rgba(24,213,255,.18)}
+.plan-card.monthly{border-color:rgba(255,225,0,.78);box-shadow:0 0 14px rgba(255,225,0,.16)}
+.plan-card.lifetime{border-color:rgba(35,255,184,.82);box-shadow:0 0 14px rgba(35,255,184,.2)}
+.plan-close{margin-top:4px}
+.tiny{font-size:.76rem;color:#ffe8fa}
+.hide{display:none!important}
+.count{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:90;
+  background:rgba(3,5,16,.72);
+  font-family:"Bungee","Space Grotesk",sans-serif;
+  font-size:min(30vw,180px);line-height:1;color:#fff8bf;
+  text-shadow:0 0 14px rgba(255,225,0,.8),0 0 24px rgba(255,45,149,.6);
+}
+.count.show{display:flex}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes glide{0%{transform:translateX(-16%) rotate(0deg)}100%{transform:translateX(16%) rotate(360deg)}}
+@media (max-width:700px){
+  .app{padding:10px;gap:10px}
+  .top{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-areas:
+      "auth badge"
+      "brand brand";
+    align-items:center;
+    gap:8px;
+    min-height:unset;
+    padding:10px;
+  }
+  .top #authLangWrap{
+    grid-area:auth;
+    width:100%;
+  }
+  .top #topAuthBtn{
+    max-width:100%!important;
+    min-height:44px;
+    font-size:.82rem;
+    padding:9px 10px;
+  }
+  .top #langBtn{
+    min-height:44px;
+    font-size:.75rem;
+    padding:9px 10px;
+  }
+  .top .brand{
+    grid-area:brand;
+    text-align:center;
+    font-size:1.03rem;
+    letter-spacing:.3px;
+  }
+  .top .badge{
+    grid-area:badge;
+    max-width:46vw;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:.67rem;
+    padding:6px 10px;
+    justify-self:end;
+  }
+  .sheet{width:100vw;padding:14px;max-height:94dvh}
+  .plans-frame{padding:8px;border-radius:18px}
+  .plan-cards{gap:8px}
+  .plan-card{
+    width:min(320px,88vw);
+    border-radius:16px;
+    padding:11px;
+  }
+  .plan-close{
+    position:sticky;
+    bottom:0;
+    z-index:2;
+    min-height:46px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top panel"><div id="authLangWrap"><button id="topAuthBtn" class="secondary" style="max-width:170px">Logowanie / Rejestracja</button><button id="langBtn" class="ghost" style="max-width:84px">PL</button></div><div class="brand">Who&#39;s Playlist</div><div id="trialBadge" class="badge">Tryb darmowy</div></div>
+<section id="home" class="screen active">
+<div class="panel card"><h1 id="homeTitle">Imprezowa gra w 10 sekund.</h1><p id="homeSub" class="sub">Załóż konto, by odblokować premium hosta, albo graj od razu jako gość.</p></div>
+<div class="panel card stack">
+<input id="nicknameInput" maxlength="16" placeholder="Twój nick" />
+<div class="grid two"><button id="createBtn" class="success">Utwórz Pokój</button><button id="joinBtn" class="secondary">Dołącz do Pokoju</button></div>
+<input id="joinCodeInput" maxlength="6" placeholder="Kod pokoju" class="hide" /><button id="confirmJoinBtn" class="warn hide">Dołącz Teraz</button>
+<p id="homeHint" class="tiny">Wskazówka: otwórz drugą kartę, żeby zasymulować graczy.</p>
+</div>
+</section>
+<section id="lobby" class="screen">
+<div class="panel card"><h2 id="lobbyTitle">Poczekalnia</h2><p id="lobbySub" class="sub">Udostępnij kod i startujcie.</p><div id="roomCode" class="room">------</div><div id="players" class="players"></div></div>
+<div class="panel card"><h3 id="modeTitle">Tryb Gry</h3><div id="modeGrid" class="mode-grid"></div><div id="yearWrap" class="year-wrap"><div id="yearWrapTitle" class="tiny">Dekada (tryb darmowy)</div><div id="yearFilterChips" class="year-chips"></div></div><div id="songLangWrap" class="year-wrap"><div id="songLangTitle" class="tiny">Język piosenek</div><div id="songLangChips" class="year-chips"></div></div><div id="roundsWrap" class="year-wrap"><div id="roundsTitle" class="tiny">Liczba rund</div><div id="roundsChips" class="year-chips"></div></div><p id="premiumState" class="sub">Premium nieaktywne</p></div>
+<div class="panel card grid two"><button id="leaveRoomBtn" class="ghost">Opuść</button><button id="startBtn">Start Gry</button></div>
+</section>
+<section id="game" class="screen">
+<div id="gameRoundPanel" class="panel card"><div style="display:flex;justify-content:space-between;align-items:center"><h2 id="gameTitle">Zgadnij Piosenkę</h2><div id="roundBadge" class="badge">Runda 1</div></div><div id="timer" class="timer live">5</div><div id="timerLabel" class="timer-label">CZAS NA ODPOWIEDŹ</div><div id="songBox" class="song" translate="no">Fragment startuje...</div><div id="songArtWrap" class="song-art-wrap hide"><img id="songArt" class="song-art" alt="Okładka piosenki" /></div><button id="playClipBtn" class="secondary" style="margin-top:8px">Odtwórz Fragment</button><div id="answers" class="answers notranslate" translate="no"></div><p id="roundInfo" class="sub">Wybierz szybko, żeby zdobyć więcej punktów.</p></div>
+<div id="gameLeaderPanel" class="panel card"><h3 id="leaderboardTitle">Tabela Wyników</h3><div id="leaderboard" class="leader"></div></div>
+<div id="gameControlsPanel" class="panel card grid two"><button id="backLobbyBtn" class="secondary">Poczekalnia</button><button id="nextRoundBtn" class="warn">Następna Runda</button></div>
+<div id="endSummary" class="panel end-summary hide">
+  <h3 id="endTitle">Koniec gry</h3>
+  <div id="endWinner" class="end-winner"></div>
+  <div id="endMeta" class="end-meta"></div>
+  <div id="endScores" class="end-scores"></div>
+  <div class="end-actions">
+    <button id="endReplayBtn" class="success">Zagraj ponownie</button>
+    <button id="endBackBtn" class="secondary">Poczekalnia</button>
+  </div>
+</div>
+</section>
+</div>
+<div id="sheetOverlay" class="overlay"><div class="sheet"><button id="sheetCloseBtn" class="ghost sheet-close" type="button">Zamknij</button><h3 id="sheetTitle">Premium</h3><div id="sheetText" class="sub">Wiadomość</div><div id="sheetActions" class="grid"></div></div></div>
+<div id="countdown" class="count">3</div>
+<script>
+const STORAGE_KEY="whos_playlist_rooms_v1",USER_KEY="whos_playlist_user_v1",AUTH_USERS_KEY="whos_playlist_auth_users_v1",AUTH_SESSION_KEY="whos_playlist_auth_session_v1",AUTH_CHOICE_KEY="whos_playlist_auth_choice_done_v1",LANGUAGE_KEY="whos_playlist_lang_v1";
+const ROUND_DURATION_MS=8000;
+const CLIP_DURATION_MS=8000;
+const BETWEEN_ROUNDS_MS=3000;
+const PREVIEW_PICK_ATTEMPTS=18;
+const MIN_PL_SONGS_PER_YEAR=40;
+const PREVIEW_CACHE={},TRACK_META_CACHE={};
+const YEAR_EXPANDED_CACHE={};
+const MODES={guess_song:{id:"guess_song",premium:false},whos_playlist:{id:"whos_playlist",premium:true},dj_battle:{id:"dj_battle",premium:true},fastest_finger:{id:"fastest_finger",premium:true}};
+const SONGS=[{song:"Billie Jean",artist:"Michael Jackson",year:1982,wrong:["Faith","Take On Me","Like a Virgin"]},{song:"Take On Me",artist:"a-ha",year:1985,wrong:["Africa","Tainted Love","Karma Chameleon"]},{song:"Sweet Dreams (Are Made of This)",artist:"Eurythmics",year:1983,wrong:["Material Girl","Every Breath You Take","Jump"]},{song:"Livin' on a Prayer",artist:"Bon Jovi",year:1986,wrong:["Eye of the Tiger","The Final Countdown","Don't Stop Believin'"]},{song:"Beat It",artist:"Michael Jackson",year:1982,wrong:["Thriller","Footloose","Wake Me Up Before You Go-Go"]},{song:"Girls Just Want to Have Fun",artist:"Cyndi Lauper",year:1983,wrong:["Like a Prayer","I Wanna Dance with Somebody","Roar"]},{song:"Africa",artist:"Toto",year:1982,wrong:["Rosanna","Every Breath You Take","Eye of the Tiger"]},{song:"Eye of the Tiger",artist:"Survivor",year:1982,wrong:["The Final Countdown","Jump","Livin' on a Prayer"]},{song:"Every Breath You Take",artist:"The Police",year:1983,wrong:["Message in a Bottle","Roxanne","With or Without You"]},{song:"Like a Virgin",artist:"Madonna",year:1984,wrong:["Material Girl","Into the Groove","Vogue"]},{song:"Wake Me Up Before You Go-Go",artist:"Wham!",year:1984,wrong:["Careless Whisper","Footloose","Girls Just Want to Have Fun"]},{song:"Careless Whisper",artist:"George Michael",year:1984,wrong:["Faith","Last Christmas","Father Figure"]},{song:"Take My Breath Away",artist:"Berlin",year:1986,wrong:["The Power of Love","Eternal Flame","Total Eclipse of the Heart"]},{song:"The Final Countdown",artist:"Europe",year:1986,wrong:["Rock You Like a Hurricane","Eye of the Tiger","Jump"]},{song:"I Wanna Dance with Somebody (Who Loves Me)",artist:"Whitney Houston",year:1987,wrong:["How Will I Know","Greatest Love of All","Material Girl"]},{song:"Never Gonna Give You Up",artist:"Rick Astley",year:1987,wrong:["Together Forever","Karma Chameleon","Take On Me"]},{song:"Sweet Child O' Mine",artist:"Guns N' Roses",year:1987,wrong:["Welcome to the Jungle","Paradise City","Livin' on a Prayer"]},{song:"Faith",artist:"George Michael",year:1987,wrong:["Father Figure","Careless Whisper","Billie Jean"]},{song:"With or Without You",artist:"U2",year:1987,wrong:["Sunday Bloody Sunday","One","Every Breath You Take"]},{song:"Don't You (Forget About Me)",artist:"Simple Minds",year:1985,wrong:["Take On Me","Shout","Relax"]},{song:"Karma Chameleon",artist:"Culture Club",year:1983,wrong:["Do You Really Want to Hurt Me","Wake Me Up Before You Go-Go","Girls Just Want to Have Fun"]},{song:"Footloose",artist:"Kenny Loggins",year:1984,wrong:["Danger Zone","Maniac","The Final Countdown"]},{song:"Jump",artist:"Van Halen",year:1984,wrong:["Panama","Hot for Teacher","The Final Countdown"]},{song:"Time After Time",artist:"Cyndi Lauper",year:1983,wrong:["True Colors","Girls Just Want to Have Fun","Eternal Flame"]},{song:"Total Eclipse of the Heart",artist:"Bonnie Tyler",year:1983,wrong:["Holding Out for a Hero","Alone","Eternal Flame"]},{song:"Eternal Flame",artist:"The Bangles",year:1989,wrong:["Walk Like an Egyptian","Manic Monday","Time After Time"]},{song:"The Power of Love",artist:"Huey Lewis and the News",year:1985,wrong:["Back in Time","Stuck with You","Take My Breath Away"]},{song:"Smells Like Teen Spirit",artist:"Nirvana",year:1991,wrong:["Creep","Wonderwall","Losing My Religion"]},{song:"Wonderwall",artist:"Oasis",year:1995,wrong:["Zombie","Creep","Basket Case"]},{song:"...Baby One More Time",artist:"Britney Spears",year:1998,wrong:["Genie in a Bottle","No Scrubs","Say My Name"]},{song:"I Want It That Way",artist:"Backstreet Boys",year:1999,wrong:["Bye Bye Bye","Tearin' Up My Heart","MMMBop"]},{song:"Vogue",artist:"Madonna",year:1990,wrong:["Frozen","Ray of Light","Like a Prayer"]},{song:"No Scrubs",artist:"TLC",year:1999,wrong:["Waterfalls","Say My Name","Unpretty"]},{song:"Losing My Religion",artist:"R.E.M.",year:1991,wrong:["Everybody Hurts","Creep","Wonderwall"]},{song:"Enter Sandman",artist:"Metallica",year:1991,wrong:["Nothing Else Matters","One","Smells Like Teen Spirit"]},{song:"Black or White",artist:"Michael Jackson",year:1991,wrong:["Remember the Time","Billie Jean","Beat It"]},{song:"Ice Ice Baby",artist:"Vanilla Ice",year:1990,wrong:["U Can't Touch This","Informer","Jump Around"]},{song:"What's Up?",artist:"4 Non Blondes",year:1993,wrong:["Zombie","Wonderwall","Nothing Compares 2 U"]},{song:"The Sign",artist:"Ace of Base",year:1993,wrong:["All That She Wants","Rhythm Is a Dancer","What Is Love"]},{song:"Zombie",artist:"The Cranberries",year:1994,wrong:["Linger","Creep","Wonderwall"]},{song:"Gangsta's Paradise",artist:"Coolio",year:1995,wrong:["California Love","Changes","No Diggity"]},{song:"No Diggity",artist:"Blackstreet",year:1996,wrong:["Waterfalls","Pony","This Is How We Do It"]},{song:"Bitter Sweet Symphony",artist:"The Verve",year:1997,wrong:["Lucky Man","Wonderwall","Creep"]},{song:"My Heart Will Go On",artist:"Celine Dion",year:1997,wrong:["Because You Loved Me","I Will Always Love You","Hero"]},{song:"Torn",artist:"Natalie Imbruglia",year:1997,wrong:["Big Mistake","Iris","Wonderwall"]},{song:"Iris",artist:"Goo Goo Dolls",year:1998,wrong:["Slide","Name","Wonderwall"]},{song:"Genie in a Bottle",artist:"Christina Aguilera",year:1999,wrong:["...Baby One More Time","Sometimes","No Scrubs"]},{song:"Smooth",artist:"Santana ft. Rob Thomas",year:1999,wrong:["Maria Maria","Livin' la Vida Loca","Wonderwall"]},{song:"Blue (Da Ba Dee)",artist:"Eiffel 65",year:1999,wrong:["Around the World","Better Off Alone","Rhythm Is a Dancer"]},{song:"Mambo No. 5 (A Little Bit of...)",artist:"Lou Bega",year:1999,wrong:["Livin' la Vida Loca","Macarena","Who Let the Dogs Out"]},{song:"Livin' la Vida Loca",artist:"Ricky Martin",year:1999,wrong:["She Bangs","Maria","Mambo No. 5 (A Little Bit of...)"]},{song:"Rhythm Is a Dancer",artist:"Snap!",year:1992,wrong:["The Rhythm of the Night","Blue (Da Ba Dee)","What Is Love"]},{song:"Californication",artist:"Red Hot Chili Peppers",year:1999,wrong:["Scar Tissue","Otherside","Under the Bridge"]},{song:"Creep",artist:"Radiohead",year:1992,wrong:["Karma Police","Wonderwall","Losing My Religion"]},{song:"Crazy in Love",artist:"Beyonce",year:2003,wrong:["Toxic","Umbrella","Hollaback Girl"]},{song:"In the End",artist:"Linkin Park",year:2000,wrong:["Numb","Boulevard of Broken Dreams","Bring Me to Life"]},{song:"Hey Ya!",artist:"Outkast",year:2003,wrong:["Ms. Jackson","Crazy","Gold Digger"]},{song:"Umbrella",artist:"Rihanna",year:2007,wrong:["Pon de Replay","Only Girl","Disturbia"]},{song:"Poker Face",artist:"Lady Gaga",year:2008,wrong:["Just Dance","Bad Romance","Telephone"]},{song:"Hips Don't Lie",artist:"Shakira",year:2006,wrong:["Whenever, Wherever","Waka Waka","La Tortura"]},{song:"Shape of You",artist:"Ed Sheeran",year:2017,wrong:["Bad Habits","Senorita","Sorry"]},{song:"Blinding Lights",artist:"The Weeknd",year:2019,wrong:["Levitating","Peaches","As It Was"]},{song:"Rolling in the Deep",artist:"Adele",year:2010,wrong:["Hello","Set Fire to the Rain","Someone Like You"]},{song:"Uptown Funk",artist:"Mark Ronson",year:2014,wrong:["24K Magic","Happy","Can't Stop the Feeling!"]},{song:"Despacito",artist:"Luis Fonsi",year:2017,wrong:["Bailando","Mi Gente","Taki Taki"]},{song:"Wake Me Up",artist:"Avicii",year:2013,wrong:["Levels","Lean On","Titanium"]},{song:"As It Was",artist:"Harry Styles",year:2022,wrong:["Watermelon Sugar","Adore You","Golden"]},{song:"Flowers",artist:"Miley Cyrus",year:2023,wrong:["Wrecking Ball","Midnight Sky","Malibu"]},{song:"Levitating",artist:"Dua Lipa",year:2020,wrong:["Don't Start Now","Physical","New Rules"]},{song:"Stay",artist:"The Kid LAROI",year:2021,wrong:["Without You","Peaches","Heat Waves"]},{song:"Heat Waves",artist:"Glass Animals",year:2020,wrong:["Gooey","Youth","Take a Slice"]},{song:"Espresso",artist:"Sabrina Carpenter",year:2024,wrong:["Nonsense","Feather","Please Please Please"]}];
+const SONGS_PL=[
+  {song:"Jolka, Jolka pamietasz",artist:"Budka Suflera",year:1982,lang:"pl",wrong:["Autobiografia","Nie placz Ewka","Dmuchawce, latawce, wiatr"]},
+  {song:"Przez twe oczy zielone",artist:"Akcent",year:2014,lang:"pl",wrong:["Krolowa nocy","Ona tanczy dla mnie","Przekorny los"]},
+  {song:"Ona tanczy dla mnie",artist:"Weekend",year:2012,lang:"pl",wrong:["Przez twe oczy zielone","Jestes szalona","Oczy zielone"]},
+  {song:"Jestes szalona",artist:"Boys",year:1997,lang:"pl",wrong:["Wolnosc i swoboda","Szalona","Ona tanczy dla mnie"]},
+  {song:"Autobiografia",artist:"Perfect",year:1982,lang:"pl",wrong:["Nie placz Ewka","Chcemy byc soba","Kocham wolnosc"]},
+  {song:"Nie placz Ewka",artist:"Perfect",year:1981,lang:"pl",wrong:["Autobiografia","Chcemy byc soba","Ale w kolo jest wesolo"]},
+  {song:"Krakowski spleen",artist:"Maanam",year:1983,lang:"pl",wrong:["Boskie Buenos","Kocham cie kochanie moje","Lucciola"]},
+  {song:"Dmuchawce, latawce, wiatr",artist:"Urszula",year:1983,lang:"pl",wrong:["Malinowy krol","Konik na biegunach","Wszystko czego dzis chce"]},
+  {song:"Takie tango",artist:"Budka Suflera",year:1996,lang:"pl",wrong:["Jolka, Jolka pamietasz","Bal wszystkich swietych","Za ostatni grosz"]},
+  {song:"Kocham cie, kochanie moje",artist:"Maanam",year:1983,lang:"pl",wrong:["Boskie Buenos","Cykady na Cykladach","O! Nie rob tyle halasu"]},
+  {song:"Ale jestem",artist:"Anna Maria Jopek",year:1997,lang:"pl",wrong:["Szepty i lzy","Joszko Broda","Ja wysiadam"]},
+  {song:"Sen o Warszawie",artist:"Czeslaw Niemen",year:1966,lang:"pl",wrong:["Pod papugami","Dziwny jest ten swiat","Wspomnienie"]},
+  {song:"Dni, ktorych nie znamy",artist:"Marek Grechuta",year:1971,lang:"pl",wrong:["Nie dokazuj","Wiosna ach to ty","Bede twoja pania"]},
+  {song:"Mniej niz zero",artist:"Lady Pank",year:1983,lang:"pl",wrong:["Kryzysowa narzeczona","Zawsze tam gdzie ty","Na co komu dzis"]},
+  {song:"Kryzysowa narzeczona",artist:"Lady Pank",year:1982,lang:"pl",wrong:["Mniej niz zero","Zamki na piasku","Ta noc do innych jest niepodobna"]},
+  {song:"Zawsze tam, gdzie ty",artist:"Lady Pank",year:1990,lang:"pl",wrong:["Mniej niz zero","Marchewkowe pole","Na co komu dzis"]},
+  {song:"Bal wszystkich swietych",artist:"Budka Suflera",year:2000,lang:"pl",wrong:["Takie tango","Jolka, Jolka pamietasz","Za ostatni grosz"]},
+  {song:"Milosc w Zakopanem",artist:"Slawomir",year:2017,lang:"pl",wrong:["Ni mom hektara","Megiera","Weselny pyton"]},
+  {song:"Przez twe oczy zielone",artist:"Akcent",year:2014,lang:"pl",wrong:["Ona tanczy dla mnie","Jestes szalona","Wolnosc i swoboda"]},
+  {song:"Biala armia",artist:"Bajm",year:1990,lang:"pl",wrong:["Co mi Panie dasz","Jozek, nie daruje ci tej nocy","Szklanka wody"]},
+  {song:"Co mi Panie dasz",artist:"Bajm",year:1980,lang:"pl",wrong:["Biala armia","Jozek, nie daruje ci tej nocy","Piechota do lata"]},
+  {song:"Makumba",artist:"Big Cyc",year:1996,lang:"pl",wrong:["Berlin Zachodni","Facet to swinia","Rudy sie zenil"]},
+  {song:"W kinie, w Lublinie - kochaj mnie",artist:"Brathanki",year:2000,lang:"pl",wrong:["Czerwone korale","Gdzie ten ktory powie mi","Hej, bystra woda"]},
+  {song:"Czerwone korale",artist:"Brathanki",year:2000,lang:"pl",wrong:["W kinie, w Lublinie - kochaj mnie","Gdzie ten ktory powie mi","Jeszcze po kropelce"]},
+  {song:"Malinowy krol",artist:"Urszula",year:1995,lang:"pl",wrong:["Dmuchawce, latawce, wiatr","Rysa na szkle","Konik na biegunach"]},
+  {song:"Baśka",artist:"Wilki",year:2002,lang:"pl",wrong:["Son of the blue sky","Eli lama sabachtani","Bohema"]},
+  {song:"Whisky",artist:"Dzem",year:1985,lang:"pl",wrong:["Wehikul czasu","Czerwony jak cegla","List do M."]},
+  {song:"Wehikul czasu",artist:"Dzem",year:1988,lang:"pl",wrong:["Whisky","List do M.","Naiwne pytania"]},
+  {song:"Prawy do lewego",artist:"Kayah i Bregovic",year:1999,lang:"pl",wrong:["Testosteron","Na jezykach","Supermenka"]},
+  {song:"Supermenka",artist:"Kayah",year:1997,lang:"pl",wrong:["Na jezykach","Prawy do lewego","Testosteron"]},
+  {song:"Szklana pogoda",artist:"Lombard",year:1983,lang:"pl",wrong:["Przezyj to sam","Kryzysowa narzeczona","Nie placz Ewka"]},
+  {song:"Jozek, nie daruje ci tej nocy",artist:"Bajm",year:1981,lang:"pl",wrong:["Co mi Panie dasz","Biala armia","Piechota do lata"]},
+  {song:"Kocham wolnosc",artist:"Chlopcy z Placu Broni",year:1990,lang:"pl",wrong:["Arahja","Tak tak to ja","To juz jest koniec"]},
+  {song:"Arahja",artist:"Kult",year:1988,lang:"pl",wrong:["Polska","Baranek","Kocham wolnosc"]},
+  {song:"Tak tak to ja",artist:"Obywatel G.C.",year:1988,lang:"pl",wrong:["Nie pytaj o Polske","Telefony","Arahja"]},
+  {song:"Nie pytaj o Polske",artist:"Obywatel G.C.",year:1988,lang:"pl",wrong:["Tak tak to ja","Kocham wolnosc","Arahja"]},
+  {song:"Krolowa lez",artist:"Varius Manx",year:1995,lang:"pl",wrong:["Orla cien","Piosenka ksiezycowa","Zanim zrozumiesz"]},
+  {song:"Orla cien",artist:"Varius Manx",year:1994,lang:"pl",wrong:["Krolowa lez","Piosenka ksiezycowa","Zanim zrozumiesz"]},
+  {song:"Piosenka ksiezycowa",artist:"Varius Manx",year:1994,lang:"pl",wrong:["Krolowa lez","Orla cien","Zanim zrozumiesz"]},
+  {song:"To juz jest koniec",artist:"Elektryczne Gitary",year:1997,lang:"pl",wrong:["Kiler","Co ty tutaj robisz","Jestes bogiem"]},
+  {song:"Kiler",artist:"Elektryczne Gitary",year:1997,lang:"pl",wrong:["To juz jest koniec","Co ty tutaj robisz","Jestem z miasta"]},
+  {song:"Co ty tutaj robisz",artist:"Elektryczne Gitary",year:2002,lang:"pl",wrong:["To juz jest koniec","Kiler","Dzieci wybiegly"]},
+  {song:"Statki na niebie",artist:"De Mono",year:1997,lang:"pl",wrong:["Kochać inaczej","Piosenka dla ciebie","Jeszcze tak niedawno"]},
+  {song:"Kiedy powiem sobie dosc",artist:"O.N.A.",year:1997,lang:"pl",wrong:["Znalazlam","Drzwi","Niekochana"]},
+  {song:"Znalazlam",artist:"O.N.A.",year:1998,lang:"pl",wrong:["Kiedy powiem sobie dosc","Drzwi","Niekochana"]},
+  {song:"A wszystko to",artist:"Ich Troje",year:2001,lang:"pl",wrong:["Powiedz","Keine Grenzen","Zawsze z toba chcialbym byc"]},
+  {song:"Powiedz",artist:"Ich Troje",year:2001,lang:"pl",wrong:["A wszystko to","Keine Grenzen","Zawsze z toba chcialbym byc"]},
+  {song:"Boso",artist:"Zakopower",year:2011,lang:"pl",wrong:["Kiebyś ty","Galop","Niebo"]},
+  {song:"Naucz mnie",artist:"Sarsa",year:2015,lang:"pl",wrong:["Bronie sie","Volta","Zapomnij mi"]},
+  {song:"Malomiasteczkowy",artist:"Dawid Podsiadlo",year:2018,lang:"pl",wrong:["Trójkaty i kwadraty","Nie ma fal","Post"]},
+  {song:"Trojkaty i kwadraty",artist:"Dawid Podsiadlo",year:2013,lang:"pl",wrong:["Malomiasteczkowy","Nie ma fal","Post"]},
+  {song:"Poczatek",artist:"Meskie Granie Orkiestra",year:2018,lang:"pl",wrong:["Wolne duchy","Sobie i wam","I ciebie tez bardzo"]},
+  {song:"Melodia",artist:"sanah",year:2021,lang:"pl",wrong:["Szampan","Ale jazz!","Eldorado"]},
+  {song:"Szampan",artist:"sanah",year:2020,lang:"pl",wrong:["Melodia","Ale jazz!","No sory"]},
+  {song:"Ale jazz!",artist:"sanah",year:2021,lang:"pl",wrong:["Szampan","Melodia","No sory"]},
+  {song:"Nie ma fal",artist:"Dawid Podsiadlo",year:2018,lang:"pl",wrong:["Malomiasteczkowy","Post","Trójkaty i kwadraty"]},
+  {song:"Post",artist:"Dawid Podsiadlo",year:2018,lang:"pl",wrong:["Malomiasteczkowy","Nie ma fal","Trójkaty i kwadraty"]},
+  {song:"Bialy iel",artist:"LemON",year:2013,lang:"pl",wrong:["Napraw","Scarlett","Jutro"]},
+  {song:"Wolne duchy",artist:"Meskie Granie Orkiestra",year:2019,lang:"pl",wrong:["Poczatek","Sobie i wam","I ciebie tez bardzo"]},
+  {song:"I ciebie tez bardzo",artist:"Meskie Granie Orkiestra",year:2023,lang:"pl",wrong:["Wolne duchy","Sobie i wam","Poczatek"]},
+  {song:"Sobie i wam",artist:"Meskie Granie Orkiestra",year:2022,lang:"pl",wrong:["I ciebie tez bardzo","Wolne duchy","Poczatek"]},
+  {song:"Lawendowe",artist:"sanah",year:2021,lang:"pl",wrong:["Szampan","Melodia","Ale jazz!"]},
+  {song:"Marcepan",artist:"sanah",year:2021,lang:"pl",wrong:["Szampan","Ale jazz!","No sory"]},
+  {song:"No sory",artist:"sanah",year:2024,lang:"pl",wrong:["Szampan","Melodia","Ale jazz!"]},
+  {song:"Eldorado",artist:"sanah",year:2024,lang:"pl",wrong:["No sory","Szampan","Ale jazz!"]},
+  {song:"Ostatnia nadzieja",artist:"sanah i Dawid Podsiadlo",year:2022,lang:"pl",wrong:["Poczatek","Sobie i wam","I ciebie tez bardzo"]},
+  {song:"Mogloby byc nic",artist:"Kwiat Jabloni",year:2021,lang:"pl",wrong:["Dziś pozno pojde spac","Idzie zima","Boso"]},
+  {song:"Idzie zima",artist:"Kwiat Jabloni",year:2021,lang:"pl",wrong:["Mogloby byc nic","Dziś pozno pojde spac","Boso"]},
+  {song:"To co masz Ty!",artist:"Dawid Podsiadlo",year:2022,lang:"pl",wrong:["Za krotki sen","Malomiasteczkowy","Post"]},
+  {song:"Za krotki sen",artist:"Dawid Podsiadlo",year:2022,lang:"pl",wrong:["To co masz Ty!","Malomiasteczkowy","Nie ma fal"]},
+  {song:"Nim zajdzie slonce",artist:"Smolasty i Doda",year:2022,lang:"pl",wrong:["Duze oczy","Pijemy za lepszy czas","No sory"]},
+  {song:"Duze oczy",artist:"Smolasty",year:2022,lang:"pl",wrong:["Nim zajdzie slonce","Pijemy za lepszy czas","No sory"]},
+  {song:"Zloty blask",artist:"Mrozu",year:2023,lang:"pl",wrong:["Supermoce","Aura","Nim zajdzie slonce"]},
+  {song:"Supermoce",artist:"Mrozu",year:2023,lang:"pl",wrong:["Zloty blask","Aura","Nim zajdzie slonce"]},
+  {song:"Etna",artist:"Vito Bambino",year:2023,lang:"pl",wrong:["Posłuchaj mnie","Za krotki sen","Poczatek"]},
+  {song:"No sory",artist:"sanah",year:2025,lang:"pl",wrong:["Eldorado","Szampan","Ale jazz!"]},
+  {song:"Eldorado",artist:"sanah",year:2025,lang:"pl",wrong:["No sory","Szampan","Melodia"]},
+  {song:"To co masz Ty!",artist:"Dawid Podsiadlo",year:2025,lang:"pl",wrong:["Za krotki sen","Malomiasteczkowy","Post"]},
+  {song:"Za krotki sen",artist:"Dawid Podsiadlo",year:2025,lang:"pl",wrong:["To co masz Ty!","Malomiasteczkowy","Nie ma fal"]},
+  {song:"Nim zajdzie slonce",artist:"Smolasty i Doda",year:2025,lang:"pl",wrong:["Duze oczy","No sory","Eldorado"]},
+  {song:"Duze oczy",artist:"Smolasty",year:2025,lang:"pl",wrong:["Nim zajdzie slonce","No sory","Eldorado"]},
+  {song:"Zloty blask",artist:"Mrozu",year:2025,lang:"pl",wrong:["Supermoce","Etna","No sory"]},
+  {song:"Etna",artist:"Vito Bambino",year:2025,lang:"pl",wrong:["Zloty blask","Supermoce","No sory"]},
+  {song:"Patointeligencja",artist:"Mata",year:2019,lang:"pl",wrong:["Kiss cam (podryw roku)","Schodki","Mlodziezowy bol"]},
+  {song:"Kiss cam (podryw roku)",artist:"Mata",year:2021,lang:"pl",wrong:["Patointeligencja","Schodki","Patoreakcja"]},
+  {song:"Patoreakcja",artist:"Mata",year:2021,lang:"pl",wrong:["Patointeligencja","Kiss cam (podryw roku)","Schodki"]},
+  {song:"Schodki",artist:"Mata",year:2022,lang:"pl",wrong:["Patoreakcja","Kiss cam (podryw roku)","Mlodziezowy bol"]},
+  {song:"Mlodziezowy bol",artist:"Mata",year:2023,lang:"pl",wrong:["Schodki","Patoreakcja","Kiss cam (podryw roku)"]},
+  {song:"Jetlag",artist:"Malik Montana",year:2023,lang:"pl",wrong:["Naaajak","Robie yeah","Hac a dos"]},
+  {song:"Naaajak",artist:"Malik Montana",year:2022,lang:"pl",wrong:["Jetlag","Robie yeah","Hac a dos"]},
+  {song:"Robie yeah",artist:"Malik Montana",year:2021,lang:"pl",wrong:["Naaajak","Jetlag","Hac a dos"]},
+  {song:"Hac a dos",artist:"Malik Montana",year:2020,lang:"pl",wrong:["Naaajak","Jetlag","Robie yeah"]},
+  {song:"California",artist:"White 2115",year:2021,lang:"pl",wrong:["RiRi","Mowila mi","Bandzior"]},
+  {song:"RiRi",artist:"White 2115",year:2022,lang:"pl",wrong:["California","Mowila mi","Bandzior"]},
+  {song:"Mowila mi",artist:"White 2115",year:2020,lang:"pl",wrong:["California","RiRi","Bandzior"]},
+  {song:"05:05",artist:"Bedoes 2115 i Taco Hemingway",year:2021,lang:"pl",wrong:["Gustaw","Kwiat polski","Lato 2020"]},
+  {song:"Gustaw",artist:"Bedoes 2115",year:2021,lang:"pl",wrong:["05:05","Kwiat polski","Lato 2020"]},
+  {song:"Janosik",artist:"Bedoes 2115",year:2022,lang:"pl",wrong:["Gustaw","05:05","Lato 2020"]},
+  {song:"Szklanki",artist:"Young Leosia",year:2021,lang:"pl",wrong:["Jungle girl","Hulanki","Bff"]},
+  {song:"Jungle girl",artist:"Young Leosia",year:2022,lang:"pl",wrong:["Szklanki","Hulanki","Bff"]},
+  {song:"Bff",artist:"Young Leosia i Bambi",year:2023,lang:"pl",wrong:["Szklanki","Jungle girl","Hulanki"]},
+  {song:"Lawenda",artist:"Bambi",year:2024,lang:"pl",wrong:["Bff","Millie walky","Nocny lot"]},
+  {song:"Millie walky",artist:"Bambi",year:2024,lang:"pl",wrong:["Lawenda","Bff","Nocny lot"]},
+  {song:"Nocny lot",artist:"Bambi",year:2025,lang:"pl",wrong:["Lawenda","Millie walky","Bff"]}
+];
+const ALL_SONGS=[...SONGS,...SONGS_PL];
+const YEAR_RANGES={all:[0,9999],"1980s":[1980,1989],"1990s":[1990,1999],"2000s":[2000,2009],"2010s":[2010,2019],"2020s":[2020,2029]};
+const YEAR_FILTER_OPTIONS=["all","1980s","1990s","2000s","2010s","2020s"];
+const SONG_LANG_OPTIONS=["en","pl"];
+const ROUND_LIMIT_OPTIONS=[5,10,15,20,0];
+const DJ=["Midnight Neon","Turbo Love","Velvet Drop","Hyper Skyline","Pixel Heat"];
+const I18N={
+  pl:{
+    home_title:"Imprezowa gra w 10 sekund.",
+    home_sub:"Załóż konto, by odblokować premium hosta, albo graj od razu jako gość.",
+    nickname_placeholder:"Twój nick",
+    create_room:"Utwórz Pokój",
+    join_room:"Dołącz do Pokoju",
+    join_code_placeholder:"Kod pokoju",
+    join_now:"Dołącz Teraz",
+    home_hint:"Wskazówka: otwórz drugą kartę, żeby zasymulować graczy.",
+    lobby_title:"Poczekalnia",
+    lobby_sub:"Udostępnij kod i startujcie.",
+    mode_title:"Tryb Gry",
+    year_wrap_title:"Dekada (tryb darmowy)",
+    song_lang_title:"Język piosenek",
+    rounds_title:"Liczba rund",
+    rounds_unlimited:"∞",
+    song_lang_en:"Angielski",
+    song_lang_pl:"Polski",
+    premium_inactive:"Premium nieaktywne",
+    leave:"Opuść",
+    start_game:"Start Gry",
+    wait_host:"Czekaj na prowadzącego",
+    leaderboard_title:"Tabela Wyników",
+    back_lobby:"Poczekalnia",
+    next_round:"Następna Runda",
+    play_clip:"Odtwórz Fragment",
+    timer_live:"CZAS NA ODPOWIEDŹ",
+    timer_prep:"DO NASTEPNEJ RUNDY",
+    auth_profile:"Profil",
+    auth_login_register:"Logowanie / Rejestracja",
+    mode_guess_song_title:"Zgadnij Piosenkę",
+    mode_guess_song_desc:"8 sek. fragment + 4 odpowiedzi",
+    mode_whos_playlist_title:"Czyja Playlista",
+    mode_whos_playlist_desc:"Zgadnij kto słuchał najwięcej",
+    mode_dj_battle_title:"Bitwa DJ-ów",
+    mode_dj_battle_desc:"Głosuj: lepszy / gorszy",
+    mode_fastest_finger_title:"Najszybszy Palec",
+    mode_fastest_finger_desc:"Pierwsza poprawna odpowiedź wygrywa",
+    mode_premium:"Premium",
+    mode_free:"Darmowy",
+    player_host:"Prowadzący",
+    player_player:"Gracz",
+    badge_free:"Tryb darmowy",
+    badge_premium_active:"Premium aktywne",
+    trial_active:"Okres próbny aktywny ({time})",
+    premium_active_type:"Premium aktywne ({type})",
+    premium_type_monthly:"miesięczny",
+    premium_type_lifetime:"jednorazowy",
+    premium_type_trial:"okres próbny",
+    year_all:"Wszystkie",
+    rem_text:"{h}h {m}m zostało",
+    round_badge:"Runda {n}",
+    prompt_guess_song:"Zgadnij piosenkę po fragmencie 8s ({year})",
+    song_fragment:"Fragment: {artist}",
+    prompt_whos_playlist:"Kto słuchał {song} najczęściej?",
+    song_social:"Społecznościowy typ Spotify",
+    prompt_dj_battle:"Który utwór wygrywa bitwę DJ-ów?",
+    prompt_fastest:"Najszybszy palec: kliknij poprawny tytuł jako pierwszy",
+    song_fastest:"Pierwsza poprawna odpowiedź ma bonus",
+    answer_a:"Utwór A",
+    answer_b:"Utwór B",
+    answer_skip:"Pomiń",
+    round_default:"Wybierz szybko, żeby zdobyć więcej punktów.",
+    round_selected:"WYBRAŁEŚ: {value}",
+    round_ok:"GRATULACJE! DOBRA ODPOWIEDŹ. PRZYGOTUJ SIĘ - START ZA {s}S",
+    round_bad_selected:"NIE UDAŁO SIĘ. WYBRAŁEŚ: {mine}. POPRAWNA: {correct}. PRZYGOTUJ SIĘ - START ZA {s}S",
+    round_bad_none:"NIE UDAŁO SIĘ - BRAK ODPOWIEDZI. POPRAWNA: {correct}. PRZYGOTUJ SIĘ - START ZA {s}S",
+    game_finished_win:"KONIEC GRY! DOBRA ODPOWIEDŹ. WRÓĆ DO POCZEKALNI.",
+    game_finished_lose:"KONIEC GRY! WYBRAŁEŚ: {mine}. POPRAWNA: {correct}. WRÓĆ DO POCZEKALNI.",
+    game_finished_none:"KONIEC GRY! BRAK ODPOWIEDZI. POPRAWNA: {correct}. WRÓĆ DO POCZEKALNI.",
+    timer_finished:"KONIEC GRY",
+    end_title:"Tabela końcowa",
+    end_winner:"Wygrywa: {name}",
+    end_winner_tie:"Remis: {names}",
+    end_meta:"Rundy: {played}/{limit}",
+    end_meta_unlimited:"Rundy: {played}",
+    end_play_again:"Zagraj ponownie",
+    end_back_lobby:"Poczekalnia",
+    preparing_btn:"Przygotuj się...",
+    round_running_btn:"Runda w toku",
+    round_finished_btn:"Koniec gry",
+    clip_replay:"Odtwórz ponownie",
+    clip_unavailable:"Fragment niedostępny",
+    clip_click:"Kliknij, aby odtworzyć",
+    badge_plans_title:"Pokaż plany",
+    lang_btn:"PL"
+  },
+  en:{
+    home_title:"Party game in 10 seconds.",
+    home_sub:"Create an account to unlock premium host, or play instantly as a guest.",
+    nickname_placeholder:"Your nickname",
+    create_room:"Create Room",
+    join_room:"Join Room",
+    join_code_placeholder:"Room code",
+    join_now:"Join Now",
+    home_hint:"Tip: open a second tab to simulate more players.",
+    lobby_title:"Lobby",
+    lobby_sub:"Share the code and start playing.",
+    mode_title:"Game Mode",
+    year_wrap_title:"Decade (free mode)",
+    song_lang_title:"Song language",
+    rounds_title:"Rounds",
+    rounds_unlimited:"∞",
+    song_lang_en:"English",
+    song_lang_pl:"Polish",
+    premium_inactive:"Premium inactive",
+    leave:"Leave",
+    start_game:"Start Game",
+    wait_host:"Waiting for host",
+    leaderboard_title:"Leaderboard",
+    back_lobby:"Lobby",
+    next_round:"Next Round",
+    play_clip:"Play Clip",
+    timer_live:"ANSWER TIME",
+    timer_prep:"NEXT ROUND IN",
+    auth_profile:"Profile",
+    auth_login_register:"Log in / Sign up",
+    mode_guess_song_title:"Guess the Song",
+    mode_guess_song_desc:"8 sec clip + 4 answers",
+    mode_whos_playlist_title:"Whose Playlist",
+    mode_whos_playlist_desc:"Guess who listened the most",
+    mode_dj_battle_title:"DJ Battle",
+    mode_dj_battle_desc:"Vote: better / worse",
+    mode_fastest_finger_title:"Fastest Finger",
+    mode_fastest_finger_desc:"First correct answer wins",
+    mode_premium:"Premium",
+    mode_free:"Free",
+    player_host:"Host",
+    player_player:"Player",
+    badge_free:"Free mode",
+    badge_premium_active:"Premium active",
+    trial_active:"Trial active ({time})",
+    premium_active_type:"Premium active ({type})",
+    premium_type_monthly:"monthly",
+    premium_type_lifetime:"lifetime",
+    premium_type_trial:"trial",
+    year_all:"All",
+    rem_text:"{h}h {m}m left",
+    round_badge:"Round {n}",
+    prompt_guess_song:"Guess the song from an 8s clip ({year})",
+    song_fragment:"Clip: {artist}",
+    prompt_whos_playlist:"Who listened to {song} the most?",
+    song_social:"Spotify social guess",
+    prompt_dj_battle:"Which track wins the DJ battle?",
+    prompt_fastest:"Fastest finger: tap the correct title first",
+    song_fastest:"First correct answer gets a bonus",
+    answer_a:"Track A",
+    answer_b:"Track B",
+    answer_skip:"Skip",
+    round_default:"Answer quickly to score more points.",
+    round_selected:"YOU PICKED: {value}",
+    round_ok:"NICE! CORRECT ANSWER. GET READY - START IN {s}S",
+    round_bad_selected:"NOT THIS TIME. YOU PICKED: {mine}. CORRECT: {correct}. GET READY - START IN {s}S",
+    round_bad_none:"NO ANSWER. CORRECT: {correct}. GET READY - START IN {s}S",
+    game_finished_win:"GAME OVER! CORRECT ANSWER. GO BACK TO LOBBY.",
+    game_finished_lose:"GAME OVER! YOU PICKED: {mine}. CORRECT: {correct}. GO BACK TO LOBBY.",
+    game_finished_none:"GAME OVER! NO ANSWER. CORRECT: {correct}. GO BACK TO LOBBY.",
+    timer_finished:"GAME OVER",
+    end_title:"Final results",
+    end_winner:"Winner: {name}",
+    end_winner_tie:"Tie: {names}",
+    end_meta:"Rounds: {played}/{limit}",
+    end_meta_unlimited:"Rounds: {played}",
+    end_play_again:"Play again",
+    end_back_lobby:"Lobby",
+    preparing_btn:"Get ready...",
+    round_running_btn:"Round in progress",
+    round_finished_btn:"Game over",
+    clip_replay:"Play again",
+    clip_unavailable:"Clip unavailable",
+    clip_click:"Tap to play",
+    badge_plans_title:"Show plans",
+    lang_btn:"EN"
+  }
+};
+const $=id=>document.getElementById(id);
+const els={screens:{home:$("home"),lobby:$("lobby"),game:$("game")},topAuthBtn:$("topAuthBtn"),langBtn:$("langBtn"),badge:$("trialBadge"),homeTitle:$("homeTitle"),homeSub:$("homeSub"),homeHint:$("homeHint"),lobbyTitle:$("lobbyTitle"),lobbySub:$("lobbySub"),modeTitle:$("modeTitle"),yearWrapTitle:$("yearWrapTitle"),songLangWrap:$("songLangWrap"),songLangTitle:$("songLangTitle"),songLangChips:$("songLangChips"),roundsWrap:$("roundsWrap"),roundsTitle:$("roundsTitle"),roundsChips:$("roundsChips"),leaderboardTitle:$("leaderboardTitle"),nick:$("nicknameInput"),create:$("createBtn"),join:$("joinBtn"),joinCode:$("joinCodeInput"),confirmJoin:$("confirmJoinBtn"),roomCode:$("roomCode"),players:$("players"),modeGrid:$("modeGrid"),yearWrap:$("yearWrap"),yearFilterChips:$("yearFilterChips"),premiumState:$("premiumState"),leave:$("leaveRoomBtn"),start:$("startBtn"),gameRoundPanel:$("gameRoundPanel"),gameLeaderPanel:$("gameLeaderPanel"),gameControlsPanel:$("gameControlsPanel"),title:$("gameTitle"),round:$("roundBadge"),timer:$("timer"),timerLabel:$("timerLabel"),song:$("songBox"),songArtWrap:$("songArtWrap"),songArt:$("songArt"),playClipBtn:$("playClipBtn"),answers:$("answers"),info:$("roundInfo"),leader:$("leaderboard"),back:$("backLobbyBtn"),next:$("nextRoundBtn"),endSummary:$("endSummary"),endTitle:$("endTitle"),endWinner:$("endWinner"),endMeta:$("endMeta"),endScores:$("endScores"),endReplayBtn:$("endReplayBtn"),endBackBtn:$("endBackBtn"),overlay:$("sheetOverlay"),sheetCloseBtn:$("sheetCloseBtn"),sheetTitle:$("sheetTitle"),sheetText:$("sheetText"),sheetActions:$("sheetActions"),count:$("countdown")};
+const state={me:loadUser(),auth:loadAuthSession(),authChoiceDone:loadAuthChoiceDone(),lang:loadLang(),roomCode:null,timer:null,countdown:null,nextRoundTimeout:null,audio:null,clipTimeout:null,currentClipKey:null,currentClipUrl:null,currentArtKey:null,lastAutoClipRoundKey:null,recentSongKeys:[],recentArtistKeys:[],songDecks:{},manualScreen:null,channel:new BroadcastChannel("whos-playlist-room-sync")};
+function loadUser(){try{const s=JSON.parse(localStorage.getItem(USER_KEY)||"null");if(s&&s.id)return s}catch{}const u={id:rid(10),nickname:"Gracz"+Math.floor(Math.random()*90+10)};localStorage.setItem(USER_KEY,JSON.stringify(u));return u}
+function saveUser(){localStorage.setItem(USER_KEY,JSON.stringify(state.me))}
+function loadLang(){try{const x=localStorage.getItem(LANGUAGE_KEY);return x==="en"?"en":"pl"}catch{return "pl"}}
+function saveLang(){try{localStorage.setItem(LANGUAGE_KEY,state.lang)}catch{}}
+function t(key,vars){const dict=I18N[state.lang]||I18N.pl;let out=dict[key]??I18N.pl[key]??key;if(vars)out=out.replace(/\{(\w+)\}/g,(_,k)=>String(vars[k]??`{${k}}`));return out}
+function modeTitle(id){return t(`mode_${id}_title`)}
+function modeDesc(id){return t(`mode_${id}_desc`)}
+function yearLabel(id){if(id==="all")return t("year_all");if(id==="1980s")return "80s";if(id==="1990s")return "90s";return id}
+function applyStaticTexts(){
+  document.documentElement.lang=state.lang;
+  if(els.langBtn)els.langBtn.textContent=t("lang_btn");
+  if(els.homeTitle)els.homeTitle.textContent=t("home_title");
+  if(els.homeSub)els.homeSub.textContent=t("home_sub");
+  if(els.homeHint)els.homeHint.textContent=t("home_hint");
+  if(els.nick)els.nick.placeholder=t("nickname_placeholder");
+  if(els.create)els.create.textContent=t("create_room");
+  if(els.join)els.join.textContent=t("join_room");
+  if(els.joinCode)els.joinCode.placeholder=t("join_code_placeholder");
+  if(els.confirmJoin)els.confirmJoin.textContent=t("join_now");
+  if(els.lobbyTitle)els.lobbyTitle.textContent=t("lobby_title");
+  if(els.lobbySub)els.lobbySub.textContent=t("lobby_sub");
+  if(els.modeTitle)els.modeTitle.textContent=t("mode_title");
+  if(els.yearWrapTitle)els.yearWrapTitle.textContent=t("year_wrap_title");
+  if(els.songLangTitle)els.songLangTitle.textContent=t("song_lang_title");
+  if(els.roundsTitle)els.roundsTitle.textContent=t("rounds_title");
+  if(els.leaderboardTitle)els.leaderboardTitle.textContent=t("leaderboard_title");
+  if(els.leave)els.leave.textContent=t("leave");
+  if(els.back)els.back.textContent=t("back_lobby");
+  if(els.next)els.next.textContent=t("next_round");
+  if(els.playClipBtn)els.playClipBtn.textContent=t("play_clip");
+  if(els.endTitle)els.endTitle.textContent=t("end_title");
+  if(els.endReplayBtn)els.endReplayBtn.textContent=t("end_play_again");
+  if(els.endBackBtn)els.endBackBtn.textContent=t("end_back_lobby");
+  if(els.timerLabel)els.timerLabel.textContent=t("timer_live");
+  if(els.info)els.info.textContent=t("round_default");
+  if(els.sheetCloseBtn)els.sheetCloseBtn.textContent=state.lang==="en"?"Close":"Zamknij";
+  els.badge.title=t("badge_plans_title");
+}
+function loadAuthSession(){try{const s=JSON.parse(localStorage.getItem(AUTH_SESSION_KEY)||"null");return s&&s.email?s:null}catch{return null}}
+function saveAuthSession(){if(state.auth)localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(state.auth));else localStorage.removeItem(AUTH_SESSION_KEY)}
+function loadAuthChoiceDone(){try{return localStorage.getItem(AUTH_CHOICE_KEY)==="1"}catch{return false}}
+function markAuthChoiceDone(){state.authChoiceDone=true;try{localStorage.setItem(AUTH_CHOICE_KEY,"1")}catch{}}
+function authUsers(){try{return JSON.parse(localStorage.getItem(AUTH_USERS_KEY)||"[]")}catch{return []}}
+function saveAuthUsers(list){localStorage.setItem(AUTH_USERS_KEY,JSON.stringify(list))}
+function isLoggedIn(){return !!(state.auth&&state.auth.email)}
+function getAuthUser(){if(!isLoggedIn())return null;return authUsers().find(u=>u.id===state.auth.id)||null}
+function renderAuthStatus(){els.topAuthBtn.textContent=isLoggedIn()?t("auth_profile"):t("auth_login_register")}
+function readFileAsDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=reject;r.readAsDataURL(file)})}
+function initialsFromName(name){
+  const cleaned=String(name||"").trim();
+  if(!cleaned)return "??";
+  const parts=cleaned.split(/\s+/).filter(Boolean);
+  if(parts.length===1)return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[1][0]).toUpperCase();
+}
+function openProfileSheet(){
+  const user=getAuthUser();
+  if(!user){openAuthSheet("login");return}
+  const currentAvatar=user.avatar||"";
+  els.sheetTitle.textContent="Profil";
+  els.sheetText.innerHTML=
+`<div class="plans-wrap">
+  <div class="tiny">Zdjecie profilowe</div>
+  <div style="display:flex;justify-content:center"><img id="profileAvatarPreview" src="${currentAvatar}" alt="Avatar" style="width:96px;height:96px;border-radius:999px;object-fit:cover;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12)" /></div>
+  <input id="profileAvatarFile" type="file" accept="image/*" />
+  <button id="removeAvatarBtn" class="ghost">Usuń zdjęcie</button>
+  <div class="tiny">Nick</div>
+  <input id="profileNick" maxlength="20" value="${user.nickname||""}" />
+  <div class="tiny">Zmiana hasla</div>
+  <input id="profileOldPass" type="password" placeholder="Stare hasło" />
+  <input id="profileNewPass" type="password" placeholder="Nowe hasło" />
+</div>`;
+  els.sheetActions.innerHTML="";
+  const fileInput=()=>document.getElementById("profileAvatarFile");
+  const avatarPreview=()=>document.getElementById("profileAvatarPreview");
+  let pendingAvatar=null;
+  fileInput().onchange=async(e)=>{
+    const f=(e.target.files||[])[0];
+    if(!f)return;
+    try{pendingAvatar=await readFileAsDataUrl(f);if(avatarPreview())avatarPreview().src=pendingAvatar}catch{}
+  };
+  document.getElementById("removeAvatarBtn").onclick=()=>{pendingAvatar="";if(avatarPreview())avatarPreview().removeAttribute("src")};
+  const saveBtn=document.createElement("button");
+  saveBtn.className="success";
+  saveBtn.textContent="Zapisz profil";
+  saveBtn.onclick=async()=>{
+    const users=authUsers();
+    const idx=users.findIndex(u=>u.id===state.auth.id);
+	    if(idx<0){sheet("Błąd","Sesja wygasła. Zaloguj się ponownie.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}
+    const current=users[idx];
+    const nick=(document.getElementById("profileNick").value||"").trim().slice(0,20);
+    const oldPass=(document.getElementById("profileOldPass").value||"").trim();
+    const newPass=(document.getElementById("profileNewPass").value||"").trim();
+	    if(!nick){sheet("Brak nicku","Nick nie może być pusty.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}
+	    if(newPass&&oldPass!==current.password){sheet("Błędne hasło","Stare hasło jest niepoprawne.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}
+    users[idx]={...current,nickname:nick,password:newPass?newPass:current.password,avatar:pendingAvatar!==null?pendingAvatar:(current.avatar||"")};
+    saveAuthUsers(users);
+    state.auth={id:users[idx].id,email:users[idx].email,nickname:users[idx].nickname,avatar:users[idx].avatar||""};
+    saveAuthSession();
+    state.me.nickname=nick;saveUser();if(els.nick)els.nick.value=nick;
+    if(state.roomCode){update(r=>{r.players=r.players.map(p=>p.id===state.me.id?{...p,nickname:nick,avatar:users[idx].avatar||""}:p);return r})}
+    renderAuthStatus();
+    closeSheet();
+    if(state.roomCode)renderLobby();
+  };
+  const closeBtn=document.createElement("button");
+  closeBtn.className="secondary";
+  closeBtn.textContent="Zamknij";
+  closeBtn.onclick=closeSheet;
+  els.sheetActions.appendChild(saveBtn);
+  els.sheetActions.appendChild(closeBtn);
+  els.overlay.classList.add("show");
+}
+function openAuthSheet(mode,onSuccess){
+  const isReg=mode==="register";
+  els.sheetTitle.textContent=isReg?"Utwórz konto":"Logowanie";
+  els.sheetText.innerHTML=`<div class="plans-wrap"><input id="authEmail" placeholder="E-mail" /><input id="authPass" type="password" placeholder="Hasło" /><input id="authNick" placeholder="Nick (opcjonalnie)" class="${isReg?"":"hide"}" /></div>`;
+  els.sheetActions.innerHTML="";
+  const main=document.createElement("button");
+  main.className="success";
+  main.textContent=isReg?"Utwórz konto":"Zaloguj";
+  main.onclick=()=>{
+    const email=(document.getElementById("authEmail").value||"").trim().toLowerCase();
+    const pass=(document.getElementById("authPass").value||"").trim();
+    const nick=((document.getElementById("authNick")||{}).value||"").trim();
+    if(!email||!pass){sheet("Brak danych","Wpisz e-mail i hasło.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}
+    const users=authUsers();
+    if(isReg){
+      if(users.some(u=>u.email===email)){sheet("Konto już istnieje","Użyj logowania dla tego e-maila.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}
+      const user={id:rid(10),email:email,password:pass,nickname:nick||email.split("@")[0],avatar:""};
+      users.push(user);saveAuthUsers(users);state.auth={id:user.id,email:user.email,nickname:user.nickname,avatar:user.avatar||""};if(!state.me.nickname||state.me.nickname.startsWith("Gracz")){state.me.nickname=user.nickname;els.nick.value=user.nickname;saveUser()}
+    }else{
+      const user=users.find(u=>u.email===email&&u.password===pass);
+      if(!user){sheet("Logowanie nieudane","Błędny e-mail lub hasło.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}
+      state.auth={id:user.id,email:user.email,nickname:user.nickname,avatar:user.avatar||""};if(!state.me.nickname||state.me.nickname.startsWith("Gracz")){state.me.nickname=user.nickname;els.nick.value=user.nickname;saveUser()}
+    }
+    saveAuthSession();markAuthChoiceDone();renderAuthStatus();closeSheet();if(onSuccess)onSuccess();
+  };
+  const switchBtn=document.createElement("button");
+  switchBtn.className="secondary";
+  switchBtn.textContent=isReg?"Mam już konto":"Utwórz konto";
+  switchBtn.onclick=()=>openAuthSheet(isReg?"login":"register",onSuccess);
+  const close=document.createElement("button");
+  close.className="ghost";
+  close.textContent="Graj jako gość";
+  close.onclick=()=>{state.auth=null;saveAuthSession();markAuthChoiceDone();renderAuthStatus();closeSheet();};
+  els.sheetActions.appendChild(main);els.sheetActions.appendChild(switchBtn);els.sheetActions.appendChild(close);els.overlay.classList.add("show");
+}
+function requireLoginForPremium(onSuccess){sheet("Wymagane logowanie","Aby kupić premium, najpierw musisz się zalogować.",[{label:"Zaloguj",cls:"success",fn:()=>openAuthSheet("login",onSuccess)},{label:"Utwórz konto",cls:"secondary",fn:()=>openAuthSheet("register",onSuccess)},{label:"Anuluj",cls:"ghost",fn:closeSheet}])}
+function rid(n=6){const c="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<n;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+function rooms(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}catch{return {}}}
+function setRooms(r){localStorage.setItem(STORAGE_KEY,JSON.stringify(r));state.channel.postMessage({type:"u"})}
+function room(code=state.roomCode){if(!code)return null;return rooms()[code]||null}
+function update(mut){const all=rooms();const r=all[state.roomCode];if(!r)return null;all[state.roomCode]=mut(structuredClone(r))||r;setRooms(all);return all[state.roomCode]}
+function show(s){Object.entries(els.screens).forEach(([k,v])=>v.classList.toggle("active",k===s))}
+function createRoom(){let code;const all=rooms();do{code=rid(6)}while(all[code]);all[code]={id:code,hostId:state.me.id,players:[{id:state.me.id,nickname:state.me.nickname,avatar:(state.auth&&state.auth.avatar)||"",score:0,isHost:true}],selectedMode:"guess_song",yearFilter:"all",songLang:"en",maxRounds:10,currentGame:null,roundState:null,premium:{active:false,type:null,activatedAt:null,expiresAt:null,trialUsed:false}};setRooms(all);state.roomCode=code;show("lobby");renderLobby()}
+function joinRoom(code){const r=room(code);if(!r){sheet("Nie znaleziono pokoju","Sprawdź kod i spróbuj ponownie.",[{label:"OK",cls:"secondary",fn:closeSheet}]);return}state.roomCode=code;update(x=>{if(!x.players.some(p=>p.id===state.me.id))x.players.push({id:state.me.id,nickname:state.me.nickname,avatar:(state.auth&&state.auth.avatar)||"",score:0,isHost:false});return x});show("lobby");renderLobby()}
+function leaveRoom(){if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}if(!state.roomCode)return;const c=state.roomCode,r=room(c);if(!r){state.roomCode=null;show("home");return}const all=rooms(),n=structuredClone(r);n.players=n.players.filter(p=>p.id!==state.me.id);if(n.hostId===state.me.id){if(n.players.length){n.hostId=n.players[0].id;n.players=n.players.map((p,i)=>({...p,isHost:i===0}))}else{delete all[c];setRooms(all);state.roomCode=null;show("home");return}}all[c]=n;setRooms(all);state.roomCode=null;show("home")}
+function premiumOn(r){if(!r||!r.premium||!r.premium.active)return false;if(!r.premium.expiresAt)return true;return Date.now()<r.premium.expiresAt}
+function rem(r){return r&&r.premium&&r.premium.expiresAt?Math.max(0,r.premium.expiresAt-Date.now()):0}
+function remTxt(ms){const tt=Math.floor(ms/1000),h=Math.floor(tt/3600),m=Math.floor((tt%3600)/60);return t("rem_text",{h,m})}
+function trial(){update(r=>{const n=Date.now();r.premium={active:true,type:"trial",activatedAt:n,expiresAt:n+86400000,trialUsed:true};return r});closeSheet();renderLobby()}
+function buy(type){if(!isLoggedIn()){requireLoginForPremium(()=>buy(type));return}update(r=>{const n=Date.now();r.premium={active:true,type:type,activatedAt:n,expiresAt:type==="monthly"?n+2592000000:null,trialUsed:true,ownerEmail:state.auth.email};return r});closeSheet();renderLobby()}
+function sheet(t,txt,actions){els.sheetTitle.textContent=t;els.sheetText.textContent=txt;els.sheetActions.innerHTML="";actions.forEach(a=>{const b=document.createElement("button");b.textContent=a.label;b.className=a.cls||"secondary";b.onclick=a.fn;els.sheetActions.appendChild(b)});els.overlay.classList.add("show")}
+function closeSheet(){els.overlay.classList.remove("show")}
+function selectModeDirect(id){update(x=>{x.selectedMode=id;return x});renderLobby()}
+function openPlansSlides(r,source){
+  const hasRoom=!!r;
+  const isHost=!!(r&&r.hostId===state.me.id);
+  const trialReady=!!(isHost&&(!premiumOn(r))&&(!r.premium.trialUsed));
+  els.sheetTitle.textContent="Plany i Co Dają";
+  els.sheetText.innerHTML="";
+  const wrap=document.createElement("div");
+  wrap.className="plans-wrap";
+  const cards=document.createElement("div");
+  cards.className="plan-cards";
+
+  const freeCard=document.createElement("div");
+  freeCard.className="plan-card free";
+  freeCard.innerHTML=`<strong>1) PLAN DARMOWY</strong>
+  <div class="plan-note">Start w kilka sekund, bez konta i bez płatności.</div>
+  <div class="plan-section-title">Co dostajesz</div>
+  <div class="plan-bullets">• Tryb Zgadnij Piosenkę<br/>• Wybieranie dekad (80s, 90s, 2000s, 2010s, 2020s)<br/>• Pełna gra dla całej ekipy za 0 zł</div>
+  <div class="plan-section-title">Dla kogo</div>
+  <div class="plan-bullets">• Na szybki start i luźną imprezę bez zobowiązań</div>
+  <div class="plan-price-line">Cena: 0 zł</div>`;
+  const freeBtn=document.createElement("button");
+  freeBtn.className="success";
+  freeBtn.textContent="Wybieram Darmowy";
+  freeBtn.onclick=()=>{if(hasRoom&&isHost)selectModeDirect("guess_song");closeSheet();};
+  freeCard.appendChild(freeBtn);
+  cards.appendChild(freeCard);
+
+  const monthlyCard=document.createElement("div");
+  monthlyCard.className="plan-card monthly";
+  monthlyCard.innerHTML=`<strong>2) PREMIUM MIESIĘCZNY</strong>
+  <div class="plan-note">Subskrypcja dla hosta. Gracze nadal dołączają za darmo.</div>
+  <div class="plan-section-title">Co odblokowujesz</div>
+  <div class="plan-bullets">• Czyja Playlista<br/>• Bitwa DJ-ów<br/>• Najszybszy Palec<br/>• Wszystkie premium tryby aktywne w pokoju hosta</div>
+  <div class="plan-section-title">Jak to działa</div>
+  <div class="plan-bullets">• Tylko prowadzący płaci 14.99 zł / miesiąc<br/>• Cała reszta gra bez opłat</div>
+  <div class="plan-price-line">Cena: 14.99 zł / miesiąc</div>`;
+  const monthlyBtn=document.createElement("button");
+  monthlyBtn.className="warn";
+  monthlyBtn.textContent=trialReady?"Uruchom Okres Próbny (24h)":"Wybieram Miesięczny";
+  monthlyBtn.onclick=()=>{if(trialReady){trial();return;}if(isHost)buy("monthly");else closeSheet();};
+  monthlyCard.appendChild(monthlyBtn);
+  cards.appendChild(monthlyCard);
+
+  const oneTimeCard=document.createElement("div");
+  oneTimeCard.className="plan-card lifetime";
+  oneTimeCard.innerHTML=`<strong>3) PREMIUM JEDNORAZOWY</strong>
+  <div class="plan-note">Jedna płatność i premium bez abonamentu.</div>
+  <div class="plan-section-title">Co odblokowujesz</div>
+  <div class="plan-bullets">• Wszystkie tryby premium<br/>• Brak miesięcznych opłat<br/>• Wygodne rozwiązanie na stałe granie</div>
+  <div class="plan-section-title">Jak to działa</div>
+  <div class="plan-bullets">• Prowadzący płaci raz 29.99 zł<br/>• Gracze grają dalej za darmo</div>
+  <div class="plan-price-line">Cena: 29.99 zł jednorazowo</div>`;
+  const oneTimeBtn=document.createElement("button");
+  oneTimeBtn.className="secondary";
+  oneTimeBtn.textContent="Wybieram Jednorazowy";
+  oneTimeBtn.onclick=()=>{if(isHost)buy("lifetime");else closeSheet();};
+  oneTimeCard.appendChild(oneTimeBtn);
+  cards.appendChild(oneTimeCard);
+
+  const close=document.createElement("button");
+  close.className="ghost plan-close";
+  close.textContent="Zamknij";
+  close.onclick=closeSheet;
+
+  const frame=document.createElement("div");
+  frame.className="plans-frame";
+  frame.appendChild(cards);
+  wrap.appendChild(frame);
+  wrap.appendChild(close);
+  els.sheetText.appendChild(wrap);
+  els.sheetActions.innerHTML="";
+  els.overlay.classList.add("show");
+}
+function openPlansWithBenefits(r){openPlansSlides(r,"free_click")}
+function openPlansPreviewFromBadge(){openPlansSlides(room(),"badge")}
+function askPremium(r){
+  const text=
+`Premium odblokowuje:
+- Czyja Playlista
+- Bitwa DJ-ów
+- Najszybszy Palec
+
+Prowadzący płaci raz, wszyscy grają.
+Cennik:
+- 14.99 zł / miesiąc
+- 29.99 zł jednorazowo`;
+  if(!r.premium.trialUsed)sheet("Wypróbuj Premium za darmo",`${text}\n\nUruchom okres próbny 24h teraz.`,[{label:"Uruchom Okres Próbny",cls:"success",fn:trial},{label:"Może później",cls:"secondary",fn:closeSheet}]);else sheet("Okres próbny zakończony",`${text}\n\nOdblokuj premium, aby grać dalej.`,[{label:"14.99 zł / miesiąc",cls:"warn",fn:()=>buy("monthly")},{label:"29.99 zł jednorazowo",cls:"success",fn:()=>buy("lifetime")},{label:"Zamknij",cls:"secondary",fn:closeSheet}])
+}
+function selectMode(id){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[id];if(!m)return;if(id==="guess_song"){openPlansWithBenefits(r);return}if(m.premium&&!premiumOn(r)){askPremium(r);return}selectModeDirect(id)}
+function renderYearChips(r){if(!els.yearFilterChips||!els.yearWrap)return;const show=r.selectedMode==="guess_song";els.yearWrap.classList.toggle("hide",!show);if(!show)return;const canChange=r.hostId===state.me.id;els.yearFilterChips.innerHTML="";YEAR_FILTER_OPTIONS.forEach(id=>{const b=document.createElement("button");b.type="button";b.className="year-chip"+((r.yearFilter||"all")===id?" active":"");b.textContent=yearLabel(id);b.disabled=!canChange;b.onclick=()=>{if(!canChange)return;update(x=>{x.yearFilter=id;return x});renderLobby()};els.yearFilterChips.appendChild(b)})}
+function renderSongLangChips(r){if(!els.songLangChips||!els.songLangWrap)return;const canChange=r.hostId===state.me.id;els.songLangChips.innerHTML="";SONG_LANG_OPTIONS.forEach(id=>{const b=document.createElement("button");b.type="button";b.className="year-chip"+((r.songLang||"en")===id?" active":"");b.textContent=id==="pl"?t("song_lang_pl"):t("song_lang_en");b.disabled=!canChange;b.onclick=()=>{if(!canChange)return;update(x=>{x.songLang=id;return x});renderLobby()};els.songLangChips.appendChild(b)})}
+function roundLimitLabel(v){return v===0?t("rounds_unlimited"):String(v)}
+function renderRoundLimitChips(r){if(!els.roundsChips||!els.roundsWrap)return;const canChange=r.hostId===state.me.id;els.roundsChips.innerHTML="";ROUND_LIMIT_OPTIONS.forEach(v=>{const b=document.createElement("button");b.type="button";b.className="year-chip"+((r.maxRounds??10)===v?" active":"");b.textContent=roundLimitLabel(v);b.disabled=!canChange;b.onclick=()=>{if(!canChange)return;update(x=>{x.maxRounds=v;return x});renderLobby()};els.roundsChips.appendChild(b)})}
+function renderLobby(){const r=room();if(!r){show("home");return}if(!r.yearFilter)update(x=>{x.yearFilter="all";return x});if(!r.songLang)update(x=>{x.songLang="en";return x});if(r.maxRounds===undefined||r.maxRounds===null)update(x=>{x.maxRounds=10;return x});els.roomCode.textContent=r.id;els.players.innerHTML="";r.players.forEach(p=>{const d=document.createElement("div");d.className="player"+(p.id===state.me.id?" me":"");d.innerHTML=`<span>${p.nickname}</span><span>${p.isHost?t("player_host"):t("player_player")}</span>`;els.players.appendChild(d)});els.modeGrid.innerHTML="";Object.values(MODES).forEach(m=>{const b=document.createElement("button");b.type="button";b.className="mode"+(m.premium?" premium":"")+(r.selectedMode===m.id?" sel":"");b.innerHTML=`<strong>${modeTitle(m.id)} - ${m.premium?t("mode_premium"):t("mode_free")}</strong><small>${modeDesc(m.id)}</small>`;b.disabled=r.hostId!==state.me.id;b.onclick=()=>selectMode(m.id);els.modeGrid.appendChild(b)});renderYearChips(r);renderSongLangChips(r);renderRoundLimitChips(r);if(premiumOn(r)&&r.premium.type==="trial"){const txt=t("trial_active",{time:remTxt(rem(r))});els.premiumState.textContent=txt;els.badge.textContent=txt}else if(premiumOn(r)){const typeLabel=r.premium.type==="monthly"?t("premium_type_monthly"):r.premium.type==="lifetime"?t("premium_type_lifetime"):r.premium.type==="trial"?t("premium_type_trial"):r.premium.type;els.premiumState.textContent=t("premium_active_type",{type:typeLabel});els.badge.textContent=t("badge_premium_active")}else{els.premiumState.textContent=t("premium_inactive");els.badge.textContent=t("badge_free")}if(r.premium&&r.premium.type==="trial"&&rem(r)<=0)update(x=>{x.premium.active=false;return x});const host=r.hostId===state.me.id;els.start.disabled=!host;els.start.textContent=host?t("start_game"):t("wait_host")}
+function shuffle(a){const c=[...a];for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]]}return c}
+function songKey(s){return `${s.song}::${s.artist}`}
+function artistKey(s){return String((s&&s.artist)||"").toLowerCase().trim()}
+function uniquePool(pool){
+  const m=new Map();
+  pool.forEach(s=>{const k=songKey(s);if(!m.has(k))m.set(k,s)});
+  return [...m.values()];
+}
+function randomInt(max){
+  if(max<=0)return 0;
+  if(window.crypto&&window.crypto.getRandomValues){
+    const a=new Uint32Array(1);
+    window.crypto.getRandomValues(a);
+    return a[0]%max;
+  }
+  return Math.floor(Math.random()*max);
+}
+function shuffledCopy(arr){
+  const out=[...arr];
+  for(let i=out.length-1;i>0;i--){
+    const j=randomInt(i+1);
+    [out[i],out[j]]=[out[j],out[i]];
+  }
+  return out;
+}
+function deckSignature(base){return base.map(songKey).join("|")}
+function ensureDeck(base,deckKey){
+  const sig=deckSignature(base);
+  const curr=state.songDecks[deckKey];
+  if(curr&&curr.sig===sig&&curr.order&&curr.order.length===base.length)return curr;
+  const byKey=new Map(base.map(s=>[songKey(s),s]));
+  const order=shuffledCopy(base.map(songKey));
+  state.songDecks[deckKey]={sig,byKey,order,idx:0,last:null};
+  return state.songDecks[deckKey];
+}
+function deckTake(base,deckKey){
+  if(!base.length)return null;
+  const d=ensureDeck(base,deckKey);
+  if(d.idx>=d.order.length){
+    d.order=shuffledCopy(base.map(songKey));
+    if(d.last&&d.order.length>1&&d.order[0]===d.last){
+      const swap=randomInt(d.order.length-1)+1;
+      [d.order[0],d.order[swap]]=[d.order[swap],d.order[0]];
+    }
+    d.idx=0;
+  }
+  const k=d.order[d.idx++];
+  d.last=k;
+  return d.byKey.get(k)||base[0];
+}
+function uniqueSongCount(pool){return uniquePool(pool).length}
+function recentBlockSize(pool){
+  const unique=Math.max(1,uniqueSongCount(pool));
+  return Math.min(120,Math.max(14,Math.floor(unique*0.7)));
+}
+function recentSongSet(pool){const block=recentBlockSize(pool);return new Set(state.recentSongKeys.slice(-block))}
+function recentArtistBlockSize(pool){
+  const unique=Math.max(1,uniqueSongCount(pool));
+  return Math.min(90,Math.max(16,Math.floor(unique*0.5)));
+}
+function recentArtistSet(pool){const block=recentArtistBlockSize(pool);return new Set(state.recentArtistKeys.slice(-block))}
+function langPool(songLang){const byLang=ALL_SONGS.filter(s=>((s.lang||"en")===(songLang||"en")));return byLang.length?byLang:ALL_SONGS}
+function boostModernForAllYears(pool,yearFilter,songLang){
+  if(yearFilter!=="all")return pool;
+  const lang=songLang||"en";
+  const boosted=[];
+  for(const s of pool){
+    boosted.push(s);
+    if(lang==="pl"){
+      if(s.year>=2025){for(let i=0;i<14;i++)boosted.push(s);}
+      else if(s.year>=2020){for(let i=0;i<10;i++)boosted.push(s);}
+      else if(s.year>=2015){for(let i=0;i<6;i++)boosted.push(s);}
+      else if(s.year>=2010){for(let i=0;i<3;i++)boosted.push(s);}
+    }else{
+      if(s.year>=2020){for(let i=0;i<4;i++)boosted.push(s);}
+      else if(s.year>=2010){for(let i=0;i<2;i++)boosted.push(s);}
+    }
+  }
+  return boosted;
+}
+function yearsForRange(range,pool){if(range[0]===0&&range[1]===9999)return [...new Set(pool.map(s=>s.year))].sort((a,b)=>a-b);const ys=[];for(let y=range[0];y<=range[1];y++)ys.push(y);return ys}
+function buildExpandedYearPool(songLang){
+  const cacheKey=`${songLang||"en"}::${MIN_PL_SONGS_PER_YEAR}`;
+  if(YEAR_EXPANDED_CACHE[cacheKey])return YEAR_EXPANDED_CACHE[cacheKey];
+  const pool=langPool(songLang);
+  const yearsRaw=[...new Set(pool.map(s=>s.year))].sort((a,b)=>a-b);
+  const minYear=yearsRaw[0]||1980;
+  const maxYear=yearsRaw[yearsRaw.length-1]||new Date().getFullYear();
+  const years=[];
+  for(let y=minYear;y<=maxYear;y++)years.push(y);
+  const byYear={};
+  years.forEach(y=>{
+    const sameYear=pool.filter(s=>s.year===y);
+    const used=new Set();
+    const out=[];
+    sameYear.forEach(s=>{const k=songKey(s);if(!used.has(k)){used.add(k);out.push(s)}});
+    if(out.length<MIN_PL_SONGS_PER_YEAR){
+      const near=[...pool]
+        .filter(s=>s.year!==y)
+        .sort((a,b)=>Math.abs(a.year-y)-Math.abs(b.year-y));
+      for(const s of near){
+        const k=songKey(s);
+        if(used.has(k))continue;
+        used.add(k);
+        out.push(s);
+        if(out.length>=MIN_PL_SONGS_PER_YEAR)break;
+      }
+    }
+    if(out.length&&out.length<MIN_PL_SONGS_PER_YEAR){
+      let i=0;
+      while(out.length<MIN_PL_SONGS_PER_YEAR){
+        out.push(out[i%out.length]);
+        i++;
+      }
+    }
+    byYear[y]=out;
+  });
+  YEAR_EXPANDED_CACHE[cacheKey]=byYear;
+  return byYear;
+}
+function pickSongAvoidRecent(pool,deckKey){
+  const base=uniquePool(pool);
+  if(!base.length)return null;
+  const recent=recentSongSet(base);
+  const recentArtists=recentArtistSet(base);
+  let picked=null;
+  let backup=null;
+  for(let i=0;i<base.length;i++){
+    const cand=deckTake(base,deckKey||"default");
+    if(!cand)break;
+    if(!backup)backup=cand;
+    if(!recent.has(songKey(cand))&&!recentArtists.has(artistKey(cand))){picked=cand;break}
+  }
+  if(!picked){
+    for(let i=0;i<base.length;i++){
+      const cand=deckTake(base,deckKey||"default");
+      if(!cand)break;
+      if(!recentArtists.has(artistKey(cand))){picked=cand;break}
+    }
+  }
+  if(!picked)picked=backup||deckTake(base,deckKey||"default");
+  if(!picked)return null;
+  state.recentSongKeys.push(songKey(picked));
+  state.recentArtistKeys.push(artistKey(picked));
+  if(state.recentSongKeys.length>260)state.recentSongKeys=state.recentSongKeys.slice(-180);
+  if(state.recentArtistKeys.length>180)state.recentArtistKeys=state.recentArtistKeys.slice(-120);
+  return picked;
+}
+function filterSongsByPrefs(yearFilter,songLang,applyYear){
+  const range=YEAR_RANGES[yearFilter]||YEAR_RANGES.all;
+  const byLang=langPool(songLang);
+  if(!applyYear)return boostModernForAllYears(byLang.length?byLang:ALL_SONGS,yearFilter,songLang);
+  // Dla konkretnego filtra lat (np. 2020s) trzymamy się ścisłe wybranego zakresu.
+  // Rozszerzanie do 40/rok stosujemy tylko dla "all", żeby nie wrzucać starszych numerów.
+  if(yearFilter!=="all"){
+    const byLangAndYearStrict=byLang.filter(s=>s.year>=range[0]&&s.year<=range[1]);
+    if(byLangAndYearStrict.length)return byLangAndYearStrict;
+    const byYearAnyLangStrict=ALL_SONGS.filter(s=>s.year>=range[0]&&s.year<=range[1]);
+    if(byYearAnyLangStrict.length)return byYearAnyLangStrict;
+    return byLang.length?byLang:ALL_SONGS;
+  }
+  if((songLang||"en")==="pl"){
+    const years=yearsForRange(range,byLang);
+    const expandedByYear=buildExpandedYearPool("pl");
+    const expanded=[];
+    years.forEach(y=>{if(expandedByYear[y]&&expandedByYear[y].length)expanded.push(...expandedByYear[y])});
+    if(expanded.length)return boostModernForAllYears(expanded,yearFilter,songLang);
+  }
+  const byLangAndYear=byLang.filter(s=>s.year>=range[0]&&s.year<=range[1]);
+  if(byLangAndYear.length)return boostModernForAllYears(byLangAndYear,yearFilter,songLang);
+  const byYearAnyLang=ALL_SONGS.filter(s=>s.year>=range[0]&&s.year<=range[1]);
+  if(byYearAnyLang.length)return boostModernForAllYears(byYearAnyLang,yearFilter,songLang);
+  return boostModernForAllYears(byLang.length?byLang:ALL_SONGS,yearFilter,songLang);
+}
+function guessPayloadFromSong(s,songLang){return{prompt:t("prompt_guess_song",{year:s.year}),song:t("song_fragment",{artist:s.artist}),track:s.song,artist:s.artist,year:s.year,songLang:songLang,answers:shuffle([s.song,...s.wrong.slice(0,3)]),correct:s.song}}
+function payload(mode,players){const r=room();const selectedLang=r&&r.songLang?r.songLang:"en";if(mode==="guess_song"){const yf=r&&r.yearFilter?r.yearFilter:"all";const pool=filterSongsByPrefs(yf,selectedLang,true),s=pickSongAvoidRecent(pool,`guess:${selectedLang}:${yf}`)||pool[Math.floor(Math.random()*pool.length)];return guessPayloadFromSong(s,selectedLang)}if(mode==="whos_playlist"){const pool=filterSongsByPrefs("all",selectedLang,false),s=pickSongAvoidRecent(pool,`whos:${selectedLang}:all`)||pool[Math.floor(Math.random()*pool.length)],names=players.map(p=>p.nickname),top=names[Math.floor(Math.random()*names.length)]||t("player_host");return{prompt:t("prompt_whos_playlist",{song:s.song}),song:t("song_social"),track:s.song,artist:s.artist,songLang:selectedLang,answers:shuffle([top,...names.filter(n=>n!==top)].slice(0,4)),correct:top}}if(mode==="dj_battle"){const a=DJ[Math.floor(Math.random()*DJ.length)],b=DJ[Math.floor(Math.random()*DJ.length)];return{prompt:t("prompt_dj_battle"),song:`${a} vs ${b}`,answers:[t("answer_a"),t("answer_b"),t("answer_skip")],correct:t("answer_a")}}const pool=filterSongsByPrefs("all",selectedLang,false),s=pickSongAvoidRecent(pool,`fast:${selectedLang}:all`)||pool[Math.floor(Math.random()*pool.length)];return{prompt:t("prompt_fastest"),song:t("song_fastest"),track:s.song,artist:s.artist,songLang:selectedLang,answers:shuffle([s.song,...s.wrong.slice(0,3)]),correct:s.song}}
+async function pickPlayableGuessPayload(r){
+  const selectedLang=r&&r.songLang?r.songLang:"en";
+  const yf=r&&r.yearFilter?r.yearFilter:"all";
+  const pool=uniquePool(filterSongsByPrefs(yf,selectedLang,true));
+  if(!pool.length)return payload("guess_song",r.players||[]);
+  const tries=Math.min(PREVIEW_PICK_ATTEMPTS,pool.length);
+  for(let i=0;i<tries;i++){
+    const s=pickSongAvoidRecent(pool,`guess:${selectedLang}:${yf}`)||pool[randomInt(pool.length)];
+    const url=await getPreviewUrl(s.song,s.artist,selectedLang);
+    if(url){
+      return guessPayloadFromSong(s,selectedLang);
+    }
+  }
+  const fallback=pickSongAvoidRecent(pool,`guess:${selectedLang}:${yf}`)||pool[0];
+  return guessPayloadFromSong(fallback,selectedLang);
+}
+function stopClip(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}if(state.audio){state.audio.pause();state.audio.currentTime=0}}
+function scheduleClipStop(){if(state.clipTimeout){clearTimeout(state.clipTimeout);state.clipTimeout=null}const r=room();const left=r&&r.roundState&&r.roundState.phase==="live"?Math.max(0,r.roundState.endsAt-Date.now()):CLIP_DURATION_MS;state.clipTimeout=setTimeout(()=>stopClip(),left)}
+function langCountries(songLang){return songLang==="pl"?["PL","US"]:["US","PL"]}
+async function getTrackMeta(track,artist,songLang){if(!track||!artist)return {previewUrl:null,artworkUrl:null};const key=`${track}::${artist}::${songLang||"en"}`;if(TRACK_META_CACHE[key]!==undefined)return TRACK_META_CACHE[key];const norm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();try{const q=encodeURIComponent(`${track} ${artist}`);const nt=norm(track),na=norm(artist);let hit=null;for(const country of langCountries(songLang)){const res=await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=15&country=${country}`);const data=await res.json();const list=data.results||[];const exact=list.find(x=>norm(x.trackName)===nt&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));hit=exact||close||null;if(hit&&hit.previewUrl)break}const meta={previewUrl:hit&&hit.previewUrl?hit.previewUrl:null,artworkUrl:hit&&hit.artworkUrl100?String(hit.artworkUrl100).replace("100x100bb","600x600bb"):null};TRACK_META_CACHE[key]=meta}catch{TRACK_META_CACHE[key]={previewUrl:null,artworkUrl:null}}return TRACK_META_CACHE[key]}
+async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);PREVIEW_CACHE[key]=meta.previewUrl;return PREVIEW_CACHE[key]}
+async function renderSongArtwork(modeId,payload){if(!els.songArtWrap||!els.songArt){return}if(modeId!=="guess_song"||!payload||!payload.track||!payload.artist){els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src");state.currentArtKey=null;return}const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentArtKey=key;const meta=await getTrackMeta(payload.track,payload.artist,payload.songLang||"en");if(state.currentArtKey!==key)return;if(meta.artworkUrl){els.songArt.src=meta.artworkUrl;els.songArtWrap.classList.remove("hide")}else{els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src")}}
+async function playClip(payload,autoplay){if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}els.playClipBtn.style.display="block";const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentClipKey=key;const url=await getPreviewUrl(payload.track,payload.artist,payload.songLang||"en");if(state.currentClipKey!==key)return;state.currentClipUrl=url;if(!url){els.playClipBtn.textContent=t("clip_unavailable");return}stopClip();state.audio=new Audio(url);state.audio.volume=.9;try{if(autoplay)await state.audio.play();scheduleClipStop();els.playClipBtn.textContent=t("clip_replay")}catch{els.playClipBtn.textContent=t("clip_click")}}
+function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown()}
+function beep(f,ms){try{const c=beep.c||(beep.c=new (window.AudioContext||window.webkitAudioContext)());const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>o.stop(),ms)}catch{}}
+function countdown(){clearInterval(state.countdown);let n=3;els.count.textContent=String(n);els.count.classList.add("show");beep(880,120);state.countdown=setInterval(()=>{n--;if(n>0){els.count.textContent=String(n);beep(880+(3-n)*60,120);return}clearInterval(state.countdown);els.count.classList.remove("show");beginRound()},1000)}
+async function beginRound(){const r=room();if(!r)return;state.manualScreen="game";const round=r.roundState&&r.roundState.round?r.roundState.round:1;let p=payload(r.currentGame,r.players);if(r.currentGame==="guess_song")p=await pickPlayableGuessPayload(r);update(x=>{x.roundState={round:round,phase:"live",startedAt:Date.now(),endsAt:Date.now()+ROUND_DURATION_MS,answers:{},payload:p};return x});renderGame();tick()}
+function tick(){clearInterval(state.timer);state.timer=setInterval(()=>{const r=room();if(!r||!r.roundState)return;const left=r.roundState.endsAt-Date.now();els.timer.textContent=String(Math.max(0,Math.ceil(left/1000)));if(left<=0){clearInterval(state.timer);finishRound()}},120)}
+function answer(v){const r=room();if(!r||!r.roundState||r.roundState.phase!=="live")return;const ms=Date.now()-r.roundState.startedAt;update(x=>{x.roundState.answers[state.me.id]={value:v,reactionMs:ms};return x});beep(v===r.roundState.payload.correct?1200:220,110);renderGame()}
+function canContinueRounds(r){const limit=(r&&r.maxRounds!=null)?r.maxRounds:10;if(limit===0)return true;const roundNo=r&&r.roundState&&r.roundState.round?r.roundState.round:1;return roundNo<limit}
+function scheduleAutoNextRound(){if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="done"||r.roundState.gameFinished)return;const autoNextAt=Date.now()+BETWEEN_ROUNDS_MS;update(x=>{if(x.roundState)x.roundState.autoNextAt=autoNextAt;return x});state.nextRoundTimeout=setTimeout(()=>{const now=room();if(!now||now.hostId!==state.me.id||!now.roundState||now.roundState.phase!=="done"||now.roundState.gameFinished)return;nextRound()},BETWEEN_ROUNDS_MS)}
+function finishRound(){stopClip();const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="live"){renderGame();return}update(x=>{x.roundState.phase="done";const continueRounds=canContinueRounds(x);x.roundState.gameFinished=!continueRounds;x.roundState.autoNextAt=continueRounds?Date.now()+BETWEEN_ROUNDS_MS:null;const c=x.roundState.payload.correct;let fast=null,best=1e15;Object.entries(x.roundState.answers).forEach(([id,a])=>{if(a.value===c&&a.reactionMs<best){fast=id;best=a.reactionMs}});x.players=x.players.map(p=>{const a=x.roundState.answers[p.id];let add=0;if(a&&a.value===c){const left=Math.max(0,x.roundState.endsAt-(x.roundState.startedAt+a.reactionMs));add=100+Math.floor(left/20);if(x.currentGame==="fastest_finger"&&p.id===fast)add+=180}return {...p,score:p.score+add}});return x});scheduleAutoNextRound();renderGame()}
+function nextRound(){const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"prep",startedAt:Date.now(),endsAt:Date.now()+5000,answers:{}};return x});beginRound()}
+function renderEndSummary(r){
+  if(!els.endSummary||!els.endScores||!r||!r.roundState)return;
+  const finished=!!r.roundState.gameFinished;
+  if(els.gameRoundPanel)els.gameRoundPanel.classList.toggle("hide",finished);
+  if(els.gameLeaderPanel)els.gameLeaderPanel.classList.toggle("hide",finished);
+  if(els.gameControlsPanel)els.gameControlsPanel.classList.toggle("hide",finished);
+  els.endSummary.classList.toggle("hide",!finished);
+  if(!finished)return;
+  const sorted=[...r.players].sort((a,b)=>b.score-a.score);
+  const topScore=sorted.length?sorted[0].score:0;
+  const winners=sorted.filter(p=>p.score===topScore);
+  if(els.endWinner){
+    if(winners.length>1)els.endWinner.textContent=t("end_winner_tie",{names:winners.map(w=>w.nickname).join(", ")});
+    else els.endWinner.textContent=t("end_winner",{name:(winners[0]&&winners[0].nickname)||"-"});
+  }
+  if(els.endMeta){
+    const limit=(r.maxRounds==null)?10:r.maxRounds;
+    const played=r.roundState.round||0;
+    els.endMeta.textContent=limit===0?t("end_meta_unlimited",{played}):t("end_meta",{played,limit});
+  }
+  els.endScores.innerHTML="";
+  sorted.forEach((p,i)=>{
+    const row=document.createElement("div");
+    row.className="end-score"+(i===0?" top":"");
+    row.innerHTML=`<strong>#${i+1}</strong><span>${p.nickname}${p.id===r.hostId?" ("+t("player_host")+")":""}</span><strong>${p.score}</strong>`;
+    els.endScores.appendChild(row);
+  });
+  const host=r.hostId===state.me.id;
+  if(els.endReplayBtn){
+    els.endReplayBtn.disabled=!host;
+    els.endReplayBtn.textContent=host?t("end_play_again"):t("wait_host");
+  }
+}
+function renderGame(){
+  const r=room();
+  if(!r||!r.roundState)return;
+  const m=MODES[r.currentGame]||MODES.guess_song;
+  const p=r.roundState.payload||{prompt:t("round_default"),song:"",answers:[],correct:""};
+  const done=r.roundState.phase==="done";
+  const mine=r.roundState.answers&&r.roundState.answers[state.me.id]?r.roundState.answers[state.me.id].value:null;
+
+  els.title.textContent=modeTitle(m.id);
+  els.round.textContent=t("round_badge",{n:r.roundState.round});
+  els.song.textContent=p.song;
+  renderSongArtwork(r.currentGame,p);
+  els.info.className="sub";
+
+  if(done){
+    const gameFinished=!!r.roundState.gameFinished;
+    const left=gameFinished?0:Math.max(0,Math.ceil(((r.roundState.autoNextAt||Date.now())-Date.now())/1000));
+    els.timer.textContent=gameFinished?t("timer_finished"):String(left);
+    els.timer.classList.add("prep");
+    els.timer.classList.remove("live");
+    if(els.timerLabel)els.timerLabel.textContent=gameFinished?t("timer_finished"):t("timer_prep");
+    if(gameFinished&&mine===p.correct){
+      els.info.textContent=t("game_finished_win");
+      els.info.classList.add("info-ok");
+    }else if(gameFinished&&mine){
+      els.info.textContent=t("game_finished_lose",{mine,correct:p.correct});
+      els.info.classList.add("info-bad");
+    }else if(gameFinished){
+      els.info.textContent=t("game_finished_none",{correct:p.correct});
+      els.info.classList.add("info-bad");
+    }else if(mine===p.correct){
+      els.info.textContent=t("round_ok",{s:left});
+      els.info.classList.add("info-ok");
+    }else if(mine){
+      els.info.textContent=t("round_bad_selected",{mine,correct:p.correct,s:left});
+      els.info.classList.add("info-bad");
+    }else{
+      els.info.textContent=t("round_bad_none",{correct:p.correct,s:left});
+      els.info.classList.add("info-bad");
+    }
+  }else{
+    const liveLeft=Math.max(0,Math.ceil((r.roundState.endsAt-Date.now())/1000));
+    els.timer.textContent=String(liveLeft);
+    els.timer.classList.add("live");
+    els.timer.classList.remove("prep");
+    if(els.timerLabel)els.timerLabel.textContent=t("timer_live");
+    if(mine){
+      els.info.textContent=t("round_selected",{value:mine});
+      els.info.classList.add("info-pick");
+    }else{
+      els.info.textContent=p.prompt;
+    }
+  }
+
+  els.answers.innerHTML="";
+  p.answers.forEach(a=>{
+    const b=document.createElement("button");
+    b.className="answer notranslate";
+    b.setAttribute("translate","no");
+    b.textContent=a;
+    if(!done&&mine===a)b.classList.add("sel");
+    if(done&&a===p.correct)b.classList.add("correct");
+    if(done&&mine===a&&a!==p.correct)b.classList.add("wrong");
+    b.disabled=done;
+    b.onclick=()=>answer(a);
+    els.answers.appendChild(b);
+  });
+
+  const clipKey=`${r.currentGame||"mode"}:${r.roundState.round||0}:${p.track||""}:${p.artist||""}`;
+  if(r.roundState.phase==="live"&&r.currentGame==="guess_song"){
+    if(state.lastAutoClipRoundKey!==clipKey){
+      state.lastAutoClipRoundKey=clipKey;
+      playClip(p,true);
+    }
+  }else{
+    els.playClipBtn.style.display="none";
+  }
+
+  const s=[...r.players].sort((a,b)=>b.score-a.score);
+  els.leader.innerHTML="";
+  s.forEach((p,i)=>{
+    const d=document.createElement("div");
+    d.className="row"+(i===0?" top":"");
+    const avatar=p.avatar?`<div class="lb-avatar"><img src="${p.avatar}" alt="Awatar ${p.nickname}" /></div>`:`<div class="lb-avatar">${initialsFromName(p.nickname)}</div>`;
+    d.innerHTML=`<strong>#${i+1}</strong>${avatar}<span>${p.nickname}${p.id===r.hostId?" (Prowadzący)":""}</span><strong>${p.score}</strong>`;
+    els.leader.appendChild(d);
+  });
+  const host=r.hostId===state.me.id;
+  els.next.disabled=true;
+  els.next.textContent=done?(r.roundState&&r.roundState.gameFinished?t("round_finished_btn"):t("preparing_btn")):t("round_running_btn");
+  els.back.disabled=!host;
+  renderEndSummary(r);
+}
+function sync(){if(!state.roomCode)return;const r=room();if(!r){state.roomCode=null;show("home");return}const active=(document.querySelector(".screen.active")||{}).id;if(r.roundState&&r.roundState.phase&&active!=="game"&&state.manualScreen!=="lobby")show("game");const nowActive=(document.querySelector(".screen.active")||{}).id;if(nowActive==="lobby")renderLobby();if(nowActive==="game")renderGame();if(premiumOn(r)&&r.premium.type==="trial")els.badge.textContent=t("trial_active",{time:remTxt(rem(r))})}
+function init(){
+  if(isLoggedIn())state.authChoiceDone=true;
+  applyStaticTexts();
+  els.nick.value=state.me.nickname;
+  renderAuthStatus();
+  els.nick.addEventListener("change",()=>{const n=els.nick.value.trim().slice(0,16);if(!n)return;state.me.nickname=n;saveUser()});
+  if(els.langBtn)els.langBtn.onclick=()=>{state.lang=state.lang==="pl"?"en":"pl";saveLang();applyStaticTexts();renderAuthStatus();if(state.roomCode){const active=(document.querySelector(".screen.active")||{}).id;if(active==="lobby")renderLobby();if(active==="game")renderGame()}};
+  els.topAuthBtn.onclick=()=>{if(isLoggedIn())openProfileSheet();else openAuthSheet("register")};
+  els.create.onclick=()=>{const n=els.nick.value.trim().slice(0,16);if(!n)return;state.me.nickname=n;saveUser();createRoom()};
+  els.join.onclick=()=>{els.joinCode.classList.toggle("hide");els.confirmJoin.classList.toggle("hide");if(!els.joinCode.classList.contains("hide"))els.joinCode.focus()};
+  els.confirmJoin.onclick=()=>{const n=els.nick.value.trim().slice(0,16),c=els.joinCode.value.trim().toUpperCase();if(!n||c.length<4)return;state.me.nickname=n;saveUser();joinRoom(c)};
+  els.playClipBtn.onclick=async()=>{if(state.currentClipUrl){stopClip();state.audio=new Audio(state.currentClipUrl);state.audio.volume=.9;try{await state.audio.play();scheduleClipStop()}catch{}}else{const r=room();if(r&&r.roundState&&r.roundState.payload)playClip(r.roundState.payload,false)}};
+  els.badge.onclick=openPlansPreviewFromBadge;
+  els.leave.onclick=leaveRoom;
+  els.start.onclick=startGame;
+  els.back.onclick=()=>{if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.manualScreen="lobby";stopClip();show("lobby");renderLobby()};
+  els.next.onclick=nextRound;
+  if(els.endBackBtn)els.endBackBtn.onclick=()=>{if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.manualScreen="lobby";stopClip();show("lobby");renderLobby()};
+  if(els.endReplayBtn)els.endReplayBtn.onclick=()=>{const r=room();if(!r||r.hostId!==state.me.id)return;startGame();};
+  els.sheetCloseBtn.onclick=closeSheet;
+  els.overlay.addEventListener("click",e=>{if(e.target===els.overlay)closeSheet()});
+  window.addEventListener("storage",e=>{if(e.key===STORAGE_KEY)sync()});
+  state.channel.addEventListener("message",e=>{if(e.data&&e.data.type==="u")sync()});
+  setInterval(()=>{if(state.roomCode)sync()},500);
+  if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  if(!isLoggedIn())setTimeout(()=>openAuthSheet("register"),120);
+}
+init();
+</script>
+</body>
+</html>
