@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "whos-playlist-cache-v1";
+﻿const CACHE_NAME = "whos-playlist-cache-v2";
 const URLS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
