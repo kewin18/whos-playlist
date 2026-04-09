@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = "whos-playlist-cache-v7";
+﻿const CACHE_NAME = "whos-playlist-cache-v8";
 const URLS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -17,6 +17,12 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const reqUrl = new URL(event.request.url);
+  const isSameOrigin = reqUrl.origin === self.location.origin;
+  if (!isSameOrigin) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
   const accept = event.request.headers.get("accept") || "";
   const isHtml = event.request.mode === "navigate" || accept.includes("text/html");
   if (isHtml) {
@@ -40,7 +46,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           return response;
         })
-        .catch(() => caches.match("./index.html"));
+        .catch(() => caches.match(event.request));
     })
   );
 });
