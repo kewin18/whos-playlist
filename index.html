@@ -1369,8 +1369,7 @@ async function getTrackMeta(track,artist,songLang){
         const list=data&&data.results?data.results:[];
         const exact=list.find(x=>norm(x.trackName)===nt&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
         const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
-        const anyPreview=list.find(x=>x&&x.previewUrl);
-        hit=exact||close||anyPreview||null;
+        hit=exact||close||null;
         if(hit&&hit.previewUrl)break;
       }catch{
         // timeout/network error for a single attempt - try next term/country
