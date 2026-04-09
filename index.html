@@ -488,8 +488,8 @@ const BETWEEN_ROUNDS_MS=3000;
 const PREVIEW_PICK_ATTEMPTS=10;
 const TRACK_LOOKUP_TIMEOUT_MS=5500;
 const PREVIEW_SEARCH_BUDGET_MS=12000;
-const ROUND_PAYLOAD_TIMEOUT_MS=1800;
-const PREVIEW_CHECK_TIMEOUT_MS=1200;
+const ROUND_PAYLOAD_TIMEOUT_MS=7000;
+const PREVIEW_CHECK_TIMEOUT_MS=4200;
 const MIN_PL_SONGS_PER_YEAR=40;
 const PREVIEW_CACHE={},TRACK_META_CACHE={};
 const YEAR_EXPANDED_CACHE={};
@@ -1391,8 +1391,34 @@ async function getTrackMeta(track,artist,songLang){
 }
 async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);PREVIEW_CACHE[key]=meta.previewUrl;return PREVIEW_CACHE[key]}
 async function renderSongArtwork(modeId,payload){if(!els.songArtWrap||!els.songArt){return}if(modeId!=="guess_song"||!payload||!payload.track||!payload.artist){els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src");state.currentArtKey=null;return}const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentArtKey=key;const meta=await getTrackMeta(payload.track,payload.artist,payload.songLang||"en");if(state.currentArtKey!==key)return;if(meta.artworkUrl){els.songArt.src=meta.artworkUrl;els.songArtWrap.classList.remove("hide")}else{els.songArtWrap.classList.add("hide");els.songArt.removeAttribute("src")}}
-async function playClip(payload,autoplay){if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}els.playClipBtn.style.display="block";const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;state.currentClipKey=key;const url=await getPreviewUrl(payload.track,payload.artist,payload.songLang||"en");if(state.currentClipKey!==key)return;state.currentClipUrl=url;stopClip();if(!url){els.playClipBtn.textContent=t("clip_unavailable");return}state.audio=new Audio(url);state.audio.volume=.9;try{if(autoplay)await state.audio.play();else{await unlockAudio();await state.audio.play()}scheduleClipStop();els.playClipBtn.textContent=t("clip_replay")}catch{state.pendingAutoplayPayload=payload;els.playClipBtn.textContent=t("clip_click")}}
+async function playClip(payload,autoplay){
+  if(!payload||!payload.track||!payload.artist){els.playClipBtn.style.display="none";return}
+  els.playClipBtn.style.display="block";
+  const key=`${payload.track}::${payload.artist}::${payload.songLang||"en"}`;
+  state.currentClipKey=key;
+  let url=await getPreviewUrl(payload.track,payload.artist,payload.songLang||"en");
+  if(!url){
+    const altLang=(payload.songLang||"en")==="pl"?"en":"pl";
+    url=await getPreviewUrl(payload.track,payload.artist,altLang);
+  }
+  if(state.currentClipKey!==key)return;
+  state.currentClipUrl=url;
+  stopClip();
+  if(!url){els.playClipBtn.textContent=t("clip_unavailable");return}
+  state.audio=new Audio(url);
+  state.audio.volume=.9;
+  try{
+    if(autoplay)await state.audio.play();
+    else{await unlockAudio();await state.audio.play()}
+    scheduleClipStop();
+    els.playClipBtn.textContent=t("clip_replay")
+  }catch{
+    state.pendingAutoplayPayload=payload;
+    els.playClipBtn.textContent=t("clip_click")
+  }
+}
 function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown()}
+function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown();tick()}
 function beep(f,ms){try{const c=beep.c||(beep.c=new (window.AudioContext||window.webkitAudioContext)());const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>o.stop(),ms)}catch{}}
 function countdown(){
   clearInterval(state.countdown);
@@ -1439,7 +1465,44 @@ async function beginRound(){
     state.beginRoundInFlight=false;
   }
 }
-function tick(){clearInterval(state.timer);state.timer=setInterval(()=>{const r=room();if(!r||!r.roundState)return;const left=r.roundState.endsAt-Date.now();els.timer.textContent=String(Math.max(0,Math.ceil(left/1000)));if(left<=0){clearInterval(state.timer);finishRound()}},120)}
+function tick(){
+  clearInterval(state.timer);
+  state.timer=setInterval(()=>{
+    const r=room();
+    if(!r||!r.roundState)return;
+    const now=Date.now();
+    const host=r.hostId===state.me.id;
+    const phase=r.roundState.phase;
+    if(phase==="live"){
+      const leftMs=(r.roundState.endsAt||now)-now;
+      const left=Math.max(0,Math.ceil(leftMs/1000));
+      if(els.timer)els.timer.textContent=String(left);
+      if(leftMs<=0&&host){
+        finishRound();
+        return;
+      }
+      return;
+    }
+    if(phase==="done"){
+      const gameFinished=!!r.roundState.gameFinished;
+      const target=r.roundState.autoNextAt||now;
+      const left=Math.max(0,Math.ceil((target-now)/1000));
+      if(els.timer)els.timer.textContent=gameFinished?t("timer_finished"):String(left);
+      if(host&&!gameFinished&&r.roundState.autoNextAt&&now>=r.roundState.autoNextAt){
+        nextRound();
+      }
+      return;
+    }
+    if(phase==="prep"||phase==="countdown"){
+      const leftMs=(r.roundState.endsAt||now)-now;
+      const left=Math.max(0,Math.ceil(leftMs/1000));
+      if(els.timer)els.timer.textContent=String(left);
+      if(host&&leftMs<=0){
+        beginRound();
+      }
+    }
+  },120);
+}
 function answer(v){const r=room();if(!r||!r.roundState||r.roundState.phase!=="live")return;const ms=Date.now()-r.roundState.startedAt;update(x=>{x.roundState.answers[state.me.id]={value:v,reactionMs:ms};return x});beep(v===r.roundState.payload.correct?1200:220,110);renderGame()}
 function canContinueRounds(r){const limit=(r&&r.maxRounds!=null)?r.maxRounds:10;if(limit===0)return true;const roundNo=r&&r.roundState&&r.roundState.round?r.roundState.round:1;return roundNo<limit}
 function scheduleAutoNextRound(){if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="done"||r.roundState.gameFinished)return;const autoNextAt=Date.now()+BETWEEN_ROUNDS_MS;update(x=>{if(x.roundState)x.roundState.autoNextAt=autoNextAt;return x});state.nextRoundTimeout=setTimeout(()=>{const now=room();if(!now||now.hostId!==state.me.id||!now.roundState||now.roundState.phase!=="done"||now.roundState.gameFinished)return;nextRound()},BETWEEN_ROUNDS_MS)}
