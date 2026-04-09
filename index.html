@@ -486,8 +486,8 @@ const ROUND_DURATION_MS=8000;
 const CLIP_DURATION_MS=8000;
 const BETWEEN_ROUNDS_MS=3000;
 const PREVIEW_PICK_ATTEMPTS=10;
-const TRACK_LOOKUP_TIMEOUT_MS=2200;
-const PREVIEW_SEARCH_BUDGET_MS=4500;
+const TRACK_LOOKUP_TIMEOUT_MS=5500;
+const PREVIEW_SEARCH_BUDGET_MS=12000;
 const MIN_PL_SONGS_PER_YEAR=40;
 const PREVIEW_CACHE={},TRACK_META_CACHE={};
 const YEAR_EXPANDED_CACHE={};
@@ -1277,12 +1277,12 @@ async function getTrackMeta(track,artist,songLang){
   const key=`${track}::${artist}::${songLang||"en"}`;
   if(TRACK_META_CACHE[key]!==undefined)return TRACK_META_CACHE[key];
   const norm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-  try{
-    const nt=norm(track),na=norm(artist);
-    let hit=null;
-    for(const country of langCountries(songLang)){
-      const terms=[`${track} ${artist}`,`${artist} ${track}`];
-      for(const term of terms){
+  const nt=norm(track),na=norm(artist);
+  let hit=null;
+  for(const country of langCountries(songLang)){
+    const terms=[`${track} ${artist}`,`${artist} ${track}`];
+    for(const term of terms){
+      try{
         const q=encodeURIComponent(term);
         const data=await fetchJsonWithTimeout(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=15&country=${country}`,TRACK_LOOKUP_TIMEOUT_MS);
         const list=data&&data.results?data.results:[];
@@ -1290,14 +1290,14 @@ async function getTrackMeta(track,artist,songLang){
         const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
         hit=exact||close||null;
         if(hit&&hit.previewUrl)break;
+      }catch{
+        // timeout/network error for a single attempt - try next term/country
       }
-      if(hit&&hit.previewUrl)break;
     }
-    const meta={previewUrl:hit&&hit.previewUrl?hit.previewUrl:null,artworkUrl:hit&&hit.artworkUrl100?String(hit.artworkUrl100).replace("100x100bb","600x600bb"):null};
-    TRACK_META_CACHE[key]=meta;
-  }catch{
-    TRACK_META_CACHE[key]={previewUrl:null,artworkUrl:null};
+    if(hit&&hit.previewUrl)break;
   }
+  const meta={previewUrl:hit&&hit.previewUrl?hit.previewUrl:null,artworkUrl:hit&&hit.artworkUrl100?String(hit.artworkUrl100).replace("100x100bb","600x600bb"):null};
+  TRACK_META_CACHE[key]=meta;
   return TRACK_META_CACHE[key];
 }
 async function getPreviewUrl(track,artist,songLang){const key=`${track}::${artist}::${songLang||"en"}`;if(PREVIEW_CACHE[key]!==undefined)return PREVIEW_CACHE[key];const meta=await getTrackMeta(track,artist,songLang);PREVIEW_CACHE[key]=meta.previewUrl;return PREVIEW_CACHE[key]}
@@ -1312,7 +1312,7 @@ function answer(v){const r=room();if(!r||!r.roundState||r.roundState.phase!=="li
 function canContinueRounds(r){const limit=(r&&r.maxRounds!=null)?r.maxRounds:10;if(limit===0)return true;const roundNo=r&&r.roundState&&r.roundState.round?r.roundState.round:1;return roundNo<limit}
 function scheduleAutoNextRound(){if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="done"||r.roundState.gameFinished)return;const autoNextAt=Date.now()+BETWEEN_ROUNDS_MS;update(x=>{if(x.roundState)x.roundState.autoNextAt=autoNextAt;return x});state.nextRoundTimeout=setTimeout(()=>{const now=room();if(!now||now.hostId!==state.me.id||!now.roundState||now.roundState.phase!=="done"||now.roundState.gameFinished)return;nextRound()},BETWEEN_ROUNDS_MS)}
 function finishRound(){stopClip();const r=room();if(!r||r.hostId!==state.me.id||!r.roundState||r.roundState.phase!=="live"){renderGame();return}update(x=>{x.roundState.phase="done";const continueRounds=canContinueRounds(x);x.roundState.gameFinished=!continueRounds;x.roundState.autoNextAt=continueRounds?Date.now()+BETWEEN_ROUNDS_MS:null;const c=x.roundState.payload.correct;let fast=null,best=1e15;Object.entries(x.roundState.answers).forEach(([id,a])=>{if(a.value===c&&a.reactionMs<best){fast=id;best=a.reactionMs}});x.players=x.players.map(p=>{const a=x.roundState.answers[p.id];let add=0;if(a&&a.value===c){const left=Math.max(0,x.roundState.endsAt-(x.roundState.startedAt+a.reactionMs));add=100+Math.floor(left/20);if(x.currentGame==="fastest_finger"&&p.id===fast)add+=180}return {...p,score:p.score+add}});return x});scheduleAutoNextRound();renderGame()}
-function nextRound(){const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"prep",startedAt:Date.now(),endsAt:Date.now()+5000,answers:{}};return x});beginRound()}
+function nextRound(){const r=room();if(!r||r.hostId!==state.me.id||!canContinueRounds(r)||!r.roundState||r.roundState.gameFinished)return;if(state.nextRoundTimeout){clearTimeout(state.nextRoundTimeout);state.nextRoundTimeout=null}state.lastAutoClipRoundKey=null;update(x=>{x.roundState={round:(x.roundState&&x.roundState.round?x.roundState.round:1)+1,phase:"prep",startedAt:Date.now(),endsAt:Date.now()+BETWEEN_ROUNDS_MS,answers:{}};return x});beginRound()}
 function renderEndSummary(r){
   if(!els.endSummary||!els.endScores||!r||!r.roundState)return;
   const finished=!!r.roundState.gameFinished;
@@ -1351,7 +1351,9 @@ function renderGame(){
   if(!r||!r.roundState)return;
   const m=MODES[r.currentGame]||MODES.guess_song;
   const p=r.roundState.payload||{prompt:t("round_default"),song:"",answers:[],correct:""};
-  const done=r.roundState.phase==="done";
+  const phase=r.roundState.phase;
+  const done=phase==="done";
+  const prep=phase==="prep";
   const mine=r.roundState.answers&&r.roundState.answers[state.me.id]?r.roundState.answers[state.me.id].value:null;
 
   els.title.textContent=modeTitle(m.id);
@@ -1360,7 +1362,15 @@ function renderGame(){
   renderSongArtwork(r.currentGame,p);
   els.info.className="sub";
 
-  if(done){
+  if(prep){
+    const left=Math.max(0,Math.ceil((r.roundState.endsAt-Date.now())/1000));
+    els.timer.textContent=String(left);
+    els.timer.classList.add("prep");
+    els.timer.classList.remove("live");
+    if(els.timerLabel)els.timerLabel.textContent=t("timer_prep");
+    els.info.textContent=t("preparing_btn");
+    els.info.classList.add("info-pick");
+  }else if(done){
     const gameFinished=!!r.roundState.gameFinished;
     const left=gameFinished?0:Math.max(0,Math.ceil(((r.roundState.autoNextAt||Date.now())-Date.now())/1000));
     els.timer.textContent=gameFinished?t("timer_finished"):String(left);
@@ -1435,7 +1445,7 @@ function renderGame(){
   });
   const host=r.hostId===state.me.id;
   els.next.disabled=true;
-  els.next.textContent=done?(r.roundState&&r.roundState.gameFinished?t("round_finished_btn"):t("preparing_btn")):t("round_running_btn");
+  els.next.textContent=done?(r.roundState&&r.roundState.gameFinished?t("round_finished_btn"):t("preparing_btn")):(prep?t("preparing_btn"):t("round_running_btn"));
   els.back.disabled=!host;
   renderEndSummary(r);
 }
