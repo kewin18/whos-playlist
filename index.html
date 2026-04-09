@@ -1292,6 +1292,49 @@ async function fetchJsonWithTimeout(url,timeoutMs){
   const req=fetch(url).then(r=>r.json());
   return Promise.race([req,timeout]);
 }
+async function fetchJsonp(url,timeoutMs){
+  return new Promise((resolve,reject)=>{
+    const cb=`__itcb_${Date.now()}_${Math.floor(Math.random()*1e6)}`;
+    const sep=url.includes("?")?"&":"?";
+    const src=`${url}${sep}callback=${cb}`;
+    const script=document.createElement("script");
+    let settled=false;
+    const timer=setTimeout(()=>{
+      if(settled)return;
+      settled=true;
+      cleanup();
+      reject(new Error("jsonp-timeout"));
+    },timeoutMs);
+    function cleanup(){
+      clearTimeout(timer);
+      try{delete window[cb]}catch{}
+      if(script.parentNode)script.parentNode.removeChild(script);
+    }
+    window[cb]=(data)=>{
+      if(settled)return;
+      settled=true;
+      cleanup();
+      resolve(data);
+    };
+    script.onerror=()=>{
+      if(settled)return;
+      settled=true;
+      cleanup();
+      reject(new Error("jsonp-error"));
+    };
+    script.src=src;
+    document.head.appendChild(script);
+  });
+}
+async function fetchItunesSearch(term,country){
+  const q=encodeURIComponent(term);
+  const url=`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=15&country=${country}`;
+  try{
+    return await fetchJsonWithTimeout(url,TRACK_LOOKUP_TIMEOUT_MS);
+  }catch{
+    return await fetchJsonp(url,TRACK_LOOKUP_TIMEOUT_MS);
+  }
+}
 async function getTrackMeta(track,artist,songLang){
   if(!track||!artist)return {previewUrl:null,artworkUrl:null};
   const key=`${track}::${artist}::${songLang||"en"}`;
@@ -1300,11 +1343,10 @@ async function getTrackMeta(track,artist,songLang){
   const nt=norm(track),na=norm(artist);
   let hit=null;
   for(const country of langCountries(songLang)){
-    const terms=[`${track} ${artist}`,`${artist} ${track}`];
+    const terms=[`${track} ${artist}`,`${artist} ${track}`,`${track}`,`${artist}`];
     for(const term of terms){
       try{
-        const q=encodeURIComponent(term);
-        const data=await fetchJsonWithTimeout(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=15&country=${country}`,TRACK_LOOKUP_TIMEOUT_MS);
+        const data=await fetchItunesSearch(term,country);
         const list=data&&data.results?data.results:[];
         const exact=list.find(x=>norm(x.trackName)===nt&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
         const close=list.find(x=>(norm(x.trackName).includes(nt)||nt.includes(norm(x.trackName)))&&(norm(x.artistName).includes(na)||na.includes(norm(x.artistName))));
