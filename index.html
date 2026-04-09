@@ -1366,7 +1366,11 @@ async function getTrackMeta(track,artist,songLang){
   if(!track||!artist)return {previewUrl:null,artworkUrl:null};
   const key=`${track}::${artist}::${songLang||"en"}`;
   if(TRACK_META_CACHE[key]!==undefined)return TRACK_META_CACHE[key];
-  const norm=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const norm=t=>{
+    let s=String(t||"").toLowerCase();
+    try{s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"")}catch{}
+    return s.replace(/[^a-z0-9]+/g," ").trim();
+  };
   const nt=norm(track),na=norm(artist);
   let hit=null;
   for(const country of langCountries(songLang)){
@@ -1449,17 +1453,16 @@ async function beginRound(){
   state.manualScreen="game";
   const round=r.roundState&&r.roundState.round?r.roundState.round:1;
   let p=payload(r.currentGame,r.players);
-  if(r.currentGame==="guess_song"){
-    p=await withTimeout(pickPlayableGuessPayload(r),ROUND_PAYLOAD_TIMEOUT_MS,p);
-  }
+  // Nie blokujemy startu rundy na sieci (iTunes preview), bo to powodowało zwiechy
+  // na telefonach przy przejściu 3s -> kolejna runda.
   update(x=>{x.roundState={round:round,phase:"live",startedAt:Date.now(),endsAt:Date.now()+ROUND_DURATION_MS,answers:{},payload:p};return x});
   renderGame();
+  tick();
   if(r.currentGame==="guess_song"&&p&&p.track&&p.artist){
     const clipKey=`${r.currentGame||"mode"}:${round}:${p.track||""}:${p.artist||""}`;
     state.lastAutoClipRoundKey=clipKey;
     playClip(p,true);
   }
-  tick();
   }finally{
     state.beginRoundInFlight=false;
   }
