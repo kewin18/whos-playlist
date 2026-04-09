@@ -1306,7 +1306,22 @@ async function playClip(payload,autoplay){if(!payload||!payload.track||!payload.
 function startGame(){const r=room();if(!r||r.hostId!==state.me.id)return;const m=MODES[r.selectedMode];if(m.premium&&!premiumOn(r)){askPremium(r);return}state.lastAutoClipRoundKey=null;state.manualScreen="game";state.songDecks={};state.recentSongKeys=[];state.recentArtistKeys=[];update(x=>{x.players=x.players.map(p=>({...p,score:0}));x.currentGame=x.selectedMode;x.roundState={round:1,phase:"countdown",startedAt:Date.now(),endsAt:Date.now()+3000,answers:{}};return x});show("game");countdown()}
 function beep(f,ms){try{const c=beep.c||(beep.c=new (window.AudioContext||window.webkitAudioContext)());const o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>o.stop(),ms)}catch{}}
 function countdown(){clearInterval(state.countdown);let n=3;els.count.textContent=String(n);els.count.classList.add("show");beep(880,120);state.countdown=setInterval(()=>{n--;if(n>0){els.count.textContent=String(n);beep(880+(3-n)*60,120);return}clearInterval(state.countdown);els.count.classList.remove("show");beginRound()},1000)}
-async function beginRound(){const r=room();if(!r)return;state.manualScreen="game";const round=r.roundState&&r.roundState.round?r.roundState.round:1;let p=payload(r.currentGame,r.players);if(r.currentGame==="guess_song")p=await pickPlayableGuessPayload(r);update(x=>{x.roundState={round:round,phase:"live",startedAt:Date.now(),endsAt:Date.now()+ROUND_DURATION_MS,answers:{},payload:p};return x});renderGame();tick()}
+async function beginRound(){
+  const r=room();
+  if(!r)return;
+  state.manualScreen="game";
+  const round=r.roundState&&r.roundState.round?r.roundState.round:1;
+  let p=payload(r.currentGame,r.players);
+  if(r.currentGame==="guess_song")p=await pickPlayableGuessPayload(r);
+  update(x=>{x.roundState={round:round,phase:"live",startedAt:Date.now(),endsAt:Date.now()+ROUND_DURATION_MS,answers:{},payload:p};return x});
+  renderGame();
+  if(r.currentGame==="guess_song"&&p&&p.track&&p.artist){
+    const clipKey=`${r.currentGame||"mode"}:${round}:${p.track||""}:${p.artist||""}`;
+    state.lastAutoClipRoundKey=clipKey;
+    playClip(p,true);
+  }
+  tick();
+}
 function tick(){clearInterval(state.timer);state.timer=setInterval(()=>{const r=room();if(!r||!r.roundState)return;const left=r.roundState.endsAt-Date.now();els.timer.textContent=String(Math.max(0,Math.ceil(left/1000)));if(left<=0){clearInterval(state.timer);finishRound()}},120)}
 function answer(v){const r=room();if(!r||!r.roundState||r.roundState.phase!=="live")return;const ms=Date.now()-r.roundState.startedAt;update(x=>{x.roundState.answers[state.me.id]={value:v,reactionMs:ms};return x});beep(v===r.roundState.payload.correct?1200:220,110);renderGame()}
 function canContinueRounds(r){const limit=(r&&r.maxRounds!=null)?r.maxRounds:10;if(limit===0)return true;const roundNo=r&&r.roundState&&r.roundState.round?r.roundState.round:1;return roundNo<limit}
