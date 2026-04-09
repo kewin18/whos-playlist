@@ -1578,6 +1578,13 @@ function sync(){
   if(!state.roomCode)return;
   const r=room();
   if(!r){state.roomCode=null;show("home");return}
+  if(r.hostId===state.me.id&&r.roundState&&r.roundState.phase==="done"&&!r.roundState.gameFinished){
+    const due=(r.roundState.autoNextAt||0)+800;
+    if(Date.now()>due){
+      nextRound();
+      return;
+    }
+  }
   if(r.hostId===state.me.id&&r.roundState&&r.roundState.endsAt&&Date.now()>r.roundState.endsAt+800){
     if(r.roundState.phase==="countdown"||r.roundState.phase==="prep"){
       beginRound();
